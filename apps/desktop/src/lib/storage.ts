@@ -27,7 +27,7 @@ export interface Settings {
 }
 
 export const defaultSettings: Settings = {
-  apiBaseUrl: "http://127.0.0.1:8787",
+  apiBaseUrl: "https://sparks-api-x5tpjitcia-uc.a.run.app",
   cpuPercentInUse: 0,
   cpuPercentIdle: 50,
   idleDelayMin: 5,

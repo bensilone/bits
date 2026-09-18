@@ -2,7 +2,9 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Default Sparks capabilities",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "shell:allow-open",
@@ -11,14 +13,42 @@
     {
       "identifier": "http:default",
       "allow": [
-        { "url": "http://*" },
-        { "url": "https://*" },
-        { "url": "http://*:*" },
-        { "url": "https://*:*" },
-        { "url": "http://127.0.0.1:8787" },
-        { "url": "http://127.0.0.1:8787/*" },
-        { "url": "http://localhost:8787" },
-        { "url": "http://localhost:8787/*" }
+        {
+          "url": "http://*"
+        },
+        {
+          "url": "https://*"
+        },
+        {
+          "url": "http://*:*"
+        },
+        {
+          "url": "https://*:*"
+        },
+        {
+          "url": "http://127.0.0.1:8787"
+        },
+        {
+          "url": "http://127.0.0.1:8787/*"
+        },
+        {
+          "url": "http://localhost:8787"
+        },
+        {
+          "url": "http://localhost:8787/*"
+        },
+        {
+          "url": "https://sparks-api-x5tpjitcia-uc.a.run.app"
+        },
+        {
+          "url": "https://sparks-api-x5tpjitcia-uc.a.run.app/*"
+        },
+        {
+          "url": "https://sparks-api-380213880824.us-central1.run.app"
+        },
+        {
+          "url": "https://sparks-api-380213880824.us-central1.run.app/*"
+        }
       ]
     }
   ]
