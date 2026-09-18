@@ -126,7 +126,7 @@ publicRouter.get("/work-config", async (_req, res) => {
     worker_field: "device_id",
     pass: "x",
     note:
-      "Stratum user = treasury wallet + '.' + device_id (UUID). Algo rx/0 (RandomX). Do not ship XMRig binary in-repo.",
+      "Stratum user = treasury wallet + '.' + device_id (UUID). Algo rx/0 (RandomX). Desktop fetches pinned XMRig locally via fetch-worker; binaries not committed.",
     pause_network: false,
   });
 });

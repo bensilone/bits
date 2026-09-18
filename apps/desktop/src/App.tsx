@@ -53,28 +53,40 @@ export default function App() {
     if (status === "earning") {
       await stopWorker();
       setStatus("paused");
+      setMsg("");
       return;
     }
-    // Battery: earn OFF by default — stub check
+    // Battery gate: earn OFF by default unless Settings allow it
     if (!settings.allowBattery) {
-      // Real build: detect battery via Tauri plugin / navigator.getBattery
       try {
-        const batt = await (navigator as Navigator & { getBattery?: () => Promise<{ charging: boolean }> }).getBattery?.();
+        const batt = await (
+          navigator as Navigator & {
+            getBattery?: () => Promise<{ charging: boolean }>;
+          }
+        ).getBattery?.();
         if (batt && !batt.charging) {
-          setMsg("On battery — earning is off by default. Enable in Settings to override.");
+          setMsg(
+            "On battery — earning is off by default. Enable “Allow earning on battery” in Settings to override."
+          );
           return;
         }
       } catch {
-        /* ignore */
+        /* Battery API unavailable — continue */
       }
     }
-    await startWorker({
-      deviceId,
-      cpuPercent: settings.cpuPercent,
-      apiBase: settings.apiBaseUrl,
-    });
-    setStatus("earning");
-    setMsg("");
+    try {
+      await startWorker({
+        deviceId,
+        cpuPercent: settings.cpuPercent,
+        apiBase: settings.apiBaseUrl,
+      });
+      setStatus("earning");
+      setMsg("");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setStatus("off");
+      setMsg(msg);
+    }
   }
 
   async function syncPayout() {
@@ -121,6 +133,10 @@ export default function App() {
           >
             {status === "earning" ? "Pause" : "Start"}
           </button>
+          <p className="muted" style={{ marginTop: 10 }}>
+            Start runs RandomX to Nanopool for the prize pot. Pause stops the worker.
+            Earning stays off on battery unless enabled in Settings.
+          </p>
           <div className="callout">
             Entries reset after every award. Each event is a new race from zero.
           </div>
@@ -257,9 +273,10 @@ export default function App() {
             Device id: <code style={{ fontSize: "0.75rem" }}>{deviceId}</code>
           </p>
           <p className="muted">
-            Worker: placeholder script only. RandomX/Nanopool plugs into{" "}
-            <code>scripts/placeholder-worker.*</code> + Rust <code>stop_worker</code>.
-            Do not ship XMRig binary.
+            Start runs RandomX (XMRig) to Nanopool for the prize pot. Stratum user is{" "}
+            <code>{"{wallet}.{device_id}"}</code>. Battery-off still applies unless you allow
+            earning on battery. Fetch the worker once:{" "}
+            <code>npm run fetch-worker</code> (binaries are not committed; AV may flag XMRig).
           </p>
         </div>
       )}

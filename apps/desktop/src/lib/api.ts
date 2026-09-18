@@ -40,3 +40,32 @@ export async function savePayout(apiBase: string, deviceId: string, s: Settings)
   if (!res.ok) throw new Error(`payout ${res.status}`);
   return res.json();
 }
+
+/** Public work-config (mounted at /v1 and /v1/public). */
+export interface WorkConfig {
+  config_version?: number;
+  provider?: string;
+  work_type?: string;
+  algo?: string;
+  pool_url?: string;
+  pool_urls?: string[];
+  failover_pool_url?: string;
+  tls?: boolean;
+  wallet?: string | null;
+  user_template?: string;
+  worker_field?: string;
+  pass?: string;
+  pause_network?: boolean;
+  note?: string;
+}
+
+export async function fetchWorkConfig(apiBase: string): Promise<WorkConfig> {
+  const base = apiBase.replace(/\/$/, "");
+  // Prefer /v1/work-config (alias); fall back to /v1/public/work-config
+  let res = await fetch(`${base}/v1/work-config`);
+  if (res.status === 404) {
+    res = await fetch(`${base}/v1/public/work-config`);
+  }
+  if (!res.ok) throw new Error(`work-config ${res.status}`);
+  return res.json();
+}

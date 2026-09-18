@@ -1,18 +1,42 @@
 /**
- * Supervisor for the placeholder worker process.
- *
- * Production: spawn RandomX / Nanopool worker here (NOT stock XMRig binary in-repo).
- * Plug-in point: replace scripts/placeholder-worker.* with your pinned RandomX worker,
- * passing pool_url, wallet, worker=device_id from /v1/work-config.
+ * Supervisor for real XMRig (RandomX → Nanopool).
+ * Binary is fetched locally via `npm run fetch-worker` (not committed).
  */
+
+import { fetchWorkConfig, type WorkConfig } from "./api";
 
 export type WorkerStatus = "off" | "earning" | "paused";
 
-let simTimer: ReturnType<typeof setInterval> | null = null;
 let running = false;
 
 export function isWorkerRunning() {
   return running;
+}
+
+function buildPools(cfg: WorkConfig, user: string, pass: string) {
+  const urls: string[] = [];
+  if (cfg.pool_url) urls.push(cfg.pool_url);
+  if (Array.isArray(cfg.pool_urls)) {
+    for (const u of cfg.pool_urls) {
+      if (u && !urls.includes(u)) urls.push(u);
+    }
+  }
+  if (cfg.failover_pool_url && !urls.includes(cfg.failover_pool_url)) {
+    urls.push(cfg.failover_pool_url);
+  }
+  if (!urls.length) {
+    urls.push("xmr-us-east1.nanopool.org:10343");
+  }
+  const tls = cfg.tls !== false;
+  const algo = cfg.algo || "rx/0";
+  return urls.map((url) => ({
+    algo,
+    url,
+    user,
+    pass,
+    keepalive: true,
+    tls,
+  }));
 }
 
 export async function startWorker(opts: {
@@ -21,42 +45,75 @@ export async function startWorker(opts: {
   apiBase: string;
 }): Promise<void> {
   if (running) return;
-  running = true;
 
-  try {
-    const { Command } = await import("@tauri-apps/plugin-shell");
-    const isWin = navigator.userAgent.includes("Windows");
-    const script = isWin
-      ? "scripts/placeholder-worker.cmd"
-      : "scripts/placeholder-worker.sh";
-    const cmd = Command.create(
-      isWin ? "cmd" : "bash",
-      isWin
-        ? ["/c", script, opts.deviceId, String(opts.cpuPercent)]
-        : [script, opts.deviceId, String(opts.cpuPercent)]
-    );
-    cmd.stdout.on("data", (l: string) => console.log("[worker]", l));
-    cmd.stderr.on("data", (l: string) => console.warn("[worker]", l));
-    await cmd.spawn();
-    console.log("Worker spawned (placeholder). RandomX plugs in at scripts/ + Rust supervisor.");
-  } catch {
-    console.log("[worker-sim] earning for", opts.deviceId, "cpu%", opts.cpuPercent);
-    simTimer = setInterval(() => {
-      console.log("[worker-sim] heartbeat", new Date().toISOString());
-    }, 15_000);
+  const work = await fetchWorkConfig(opts.apiBase);
+  if (work.pause_network) {
+    throw new Error("Network earning is paused by the server (pause_network).");
   }
+  const wallet = work.wallet?.trim();
+  if (!wallet) {
+    throw new Error(
+      "Work-config has no wallet. Set XMR_TREASURY_ADDRESS on the API."
+    );
+  }
+
+  const user = `${wallet}.${opts.deviceId}`;
+  const pass = work.pass || "x";
+  const pools = buildPools(work, user, pass);
+
+  const xmrigConfig = {
+    autosave: false,
+    "donate-level": 1,
+    cpu: {
+      enabled: true,
+      "max-threads-hint": opts.cpuPercent,
+      priority: 1,
+    },
+    pools,
+  };
+
+  const cores =
+    typeof navigator !== "undefined" && navigator.hardwareConcurrency
+      ? navigator.hardwareConcurrency
+      : 4;
+  const threads = Math.max(1, Math.round((cores * opts.cpuPercent) / 100));
+
+  const { invoke } = await import("@tauri-apps/api/core");
+
+  let binaryPath: string;
+  try {
+    binaryPath = await invoke<string>("resolve_xmrig_binary");
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(
+      msg.includes("fetch-worker")
+        ? msg
+        : `XMRig binary missing. Run: cd apps/desktop && npm run fetch-worker (${msg})`
+    );
+  }
+
+  const configPath = await invoke<string>("write_xmrig_config", {
+    contents: JSON.stringify(xmrigConfig, null, 2),
+  });
+
+  await invoke("start_xmrig", {
+    configPath,
+    binaryPath,
+    threads,
+  });
+
+  running = true;
+  console.log(
+    `[worker] XMRig started user=${user} threads=${threads} pool=${pools[0]?.url}`
+  );
 }
 
 export async function stopWorker(): Promise<void> {
   running = false;
-  if (simTimer) {
-    clearInterval(simTimer);
-    simTimer = null;
-  }
   try {
     const { invoke } = await import("@tauri-apps/api/core");
     await invoke("stop_worker");
-  } catch {
-    console.log("[worker] stop (sim)");
+  } catch (e) {
+    console.warn("[worker] stop failed", e);
   }
 }

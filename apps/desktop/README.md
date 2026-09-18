@@ -5,12 +5,14 @@
 ```bash
 # API should be running at http://localhost:8787 (or change Settings → API base URL)
 cd apps/desktop
+npm run fetch-worker   # download pinned XMRig v6.26.0 into binaries/xmrig/ (gitignored)
 npm run tauri:dev
 ```
 
 ## Build
 
 ```bash
+npm run fetch-worker
 npm run tauri:build
 ```
 
@@ -24,12 +26,14 @@ Placeholder RGBA icons ship in `src-tauri/icons/`. For production:
 npx tauri icon path/to/1024.png
 ```
 
-## Worker plug-in
+## Worker (real XMRig → Nanopool)
 
-- `scripts/placeholder-worker.sh` / `.cmd` — sleep/log stub
-- Rust commands: `start_worker_process`, `stop_worker`
-- Replace with pinned RandomX worker + Nanopool stratum from `/v1/work-config` (or `/v1/public/work-config`)
-- **Stratum user:** `{wallet}.{device_id}` — e.g. treasury from work-config + `.` + this device UUID
-- **Pool (SSL):** `xmr-us-east1.nanopool.org:10343`, `tls: true`, password `x`, algo `rx/0`
-- See root README “Public treasury (Nanopool)” for verified API/dashboard notes
-- **Do not** ship stock XMRig binaries
+1. **Fetch (not committed):** `npm run fetch-worker` downloads XMRig **v6.26.0** for your OS/arch into `binaries/xmrig/` (`xmrig` or `xmrig.exe`).
+2. **Start** in the UI fetches `GET /v1/work-config` (also `/v1/public/work-config`), writes a local config, and spawns XMRig via Rust `start_xmrig`.
+3. **Stratum user:** `{wallet}.{device_id}` — treasury wallet from work-config + `.` + this device UUID
+4. **Pool (SSL):** `xmr-us-east1.nanopool.org:10343` (+ `pool_urls` failover), `tls: true`, password `x`, algo `rx/0`
+5. **Pause** invokes `stop_worker` (kills the child process tree when possible)
+6. **AV:** antivirus often flags XMRig — expected for this quick path; allowlist the binary if needed
+7. **Huge pages / signing:** optional OS tweaks improve hashrate; macOS Gatekeeper may require right-click Open on unsigned builds
+
+See root README “Public treasury (Nanopool)” for verified API/dashboard notes.

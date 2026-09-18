@@ -87,6 +87,7 @@ npm run poll:nanopool
 ```bash
 cd apps/desktop
 npm install   # if not using workspaces root install
+npm run fetch-worker   # pinned XMRig v6.26.0 → binaries/xmrig/ (gitignored; AV may flag)
 ```
 
 ### macOS (Apple Silicon or Intel)
@@ -96,11 +97,12 @@ npm install   # if not using workspaces root install
 
 ```bash
 cd apps/desktop
+npm run fetch-worker
 npm run tauri:dev      # hot reload against local API
 npm run tauri:build    # produces .app / .dmg under src-tauri/target/release/bundle
 ```
 
-Apple Silicon vs Intel: build on each arch (or cross-compile) for separate artifacts.
+Apple Silicon vs Intel: build on each arch (or cross-compile) for separate artifacts. Gatekeeper may prompt on unsigned builds.
 
 ### Windows
 
@@ -109,9 +111,12 @@ Apple Silicon vs Intel: build on each arch (or cross-compile) for separate artif
 
 ```bash
 cd apps/desktop
+npm run fetch-worker
 npm run tauri:dev
 npm run tauri:build
 ```
+
+Windows Defender often quarantines XMRig — restore/allowlist `binaries/xmrig/xmrig.exe` if Start fails.
 
 ### What the desktop app does today
 
@@ -121,11 +126,13 @@ npm run tauri:build
 | Home: status / entries / next award / Start–Pause | Works |
 | Settings: CPU%, idle delay, when-back, **battery earn OFF by default**, referral, API URL | Works |
 | Payout addresses → API | Works |
-| Worker supervisor | **Placeholder** bash/cmd that sleeps/logs |
-| RandomX / Nanopool | **Not shipped** — plug into `scripts/placeholder-worker.*` + Rust `start_worker_process` / `stop_worker` |
+| Worker supervisor | **Real XMRig** via Rust `start_xmrig` / `stop_worker` |
+| RandomX / Nanopool | **Quick path** — `npm run fetch-worker` then Start (stratum user `{wallet}.{device_id}`) |
 | Idle OS APIs | Stubbed (settings present; real idle hooks are M2 follow-up) |
 
-**Do not** commit or bundle stock XMRig binaries.
+**Do not** commit XMRig binaries (too large / AV). Desktop fetches pinned v6.26.0 locally via `fetch-worker`.
+
+**Stratum user:** `{wallet}.{device_id}` from `GET /v1/work-config`. Pool SSL `xmr-us-east1.nanopool.org:10343`, pass `x`, algo `rx/0`. Limitations: AV false positives, optional huge pages for hashrate, no code signing in this milestone.
 
 ## Env vars
 
@@ -164,7 +171,7 @@ Weighted multi-prize draw **without device replacement** (one prize per device).
 
 - Nanopool poll needs a real `XMR_TREASURY_ADDRESS` and migration `002_nanopool_state` (skips if unset)
 - Winner veto re-roll (veto marks row; seat re-roll is stub note)
-- Desktop placeholder worker (not RandomX)
+- Desktop XMRig is fetched locally (not in git); AV / Gatekeeper / huge pages are operator concerns
 - OS idle / battery detection incomplete outside browser Battery API
 - No signed work-config yet
 - No Firebase / Cloud Run deploy configs in this milestone

@@ -17,3 +17,6 @@ apps/api/dist/
 packages/shared/dist/
 *.tsbuildinfo
 .turbo/
+# XMRig fetched via npm run fetch-worker — do not commit binaries
+apps/desktop/binaries/xmrig/**
+!.gitkeep
