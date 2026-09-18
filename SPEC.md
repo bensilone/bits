@@ -1,4 +1,4 @@
-# Sparks — Product & Technical Spec (v0.9.1)
+# Sparks — Product & Technical Spec (v0.9.2)
 
 **Project name:** Sparks (internal). **Public domain lean:** winbitcoin.app (also consider winbitcoin.io / bitcoinprize.io).  
 **One-liner:** Idle compute → lottery entries → win USDT/BTC. (v1 work type: CPU Monero; platform is work-agnostic.)  
@@ -12,7 +12,7 @@
 1. One download → run. No accounts, no email, no seed phrases.
 2. v1: CPU work via RandomX to a pool (Monero as current example); home UI stays prize/entries-first, not coin-nerd.
 3. Entries from verified pool work. Easy to earn a few entries; not billions.
-4. Prizes paid in **USDT / BTC / XMR** (user preference), manually at first.
+4. Prizes paid in **USDT (TRC20) / BTC** (user preference; USDT default), manually at first.
 5. Transparent treasury: one public XMR wallet everyone can check.
 6. Referrals that pay when friends win.
 7. Tiny, beautiful desktop app for **Windows, Linux, macOS Intel, macOS Apple Silicon**. No phones.
@@ -25,7 +25,7 @@ Non-goals (v1): mobile, GPU, multi-work switching in the UI, fully automatic pay
 ## 1A. Platform vision (beyond v1 mining)
 
 **Core loop (stable forever):**
-`verified useful work on a device` → `entries` → `lottery draws` → `payout in USDT/BTC` (optional XMR).
+`verified useful work on a device` → `entries` → `lottery draws` → `payout in USDT/BTC`.
 
 One consumer machine rarely earns enough cash by itself. Bundled into a lottery, the same electricity can buy a shot at prizes people actually care about. Mining is one work type; the product is the **entries + prizes** layer.
 
@@ -71,7 +71,7 @@ Market the lottery and prizes. Work types are plumbing. Switching or mixing work
 - **Prize-first UI.** Home says “entries,” “idle,” “next award.” Not hashrate, difficulty, or stratum. About/FAQ may name the current work (e.g. Monero) as an example without forever lock-in.
 - **Cash feeling.** Prizes shown in $ (and crypto amount). USDT as default mental model.
 - **Trust by openness.** Open source client, public wallet, public draw math, public winner list.
-- **Yield the machine fast.** When the user comes back, CPU backs off immediately, then stops.
+- **Yield the machine fast.** When the user comes back, switch to the in-use CPU % (default 0% = stop).
 - **Honest lottery.** Most people won’t win. Never market as “earn income.”
 - **Period wipe.** After each award event, entries clear so people keep running for the next drop — not a forever pile.
 
@@ -86,28 +86,27 @@ Market the lottery and prizes. Work types are plumbing. Switching or mixing work
 
 ### 3.2 Home (primary screen)
 Minimal:
-- Big status: **Idle · Earning** / **Paused · You’re using this Mac** / **Off**
+- Obvious **status pill**: **Earning entries…** (animated) / **Waiting until idle** / **Paused** / **Off** — prize/entries language only (no hashrate, pool, or miner jargon)
 - **Your entries** (this period + lifetime stats)
 - **Prize pot** (USD estimate + “view wallet”)
 - **Next award** (countdown + prize summary)
 - Primary button: **Start** / **Pause**
-- Quiet footer: referral link · settings · about
+- Quiet footer: invite link · settings · about
 
-No charts. No logs by default. Advanced log behind a hidden “Details” disclosure.
+No charts. No logs by default. Advanced log behind a hidden “Details / log” disclosure.
 
 ### 3.3 Payout addresses
 Single screen: **Where should winnings go?**
 
 | Field | Notes |
 |--------|--------|
-| USDT address | Network picker: **TRC20** (default), ERC20, (optional later) |
+| USDT address | **TRC20 only** in v1 UI (default / recommended) |
 | BTC address | Legacy / BIP84 compatible validation |
-| XMR address | Standard primary address validation |
 
-- User may save **all three**.
-- **Preferred payout** radio: USDT | BTC | XMR.
+- **No XMR address** in the user-facing payout UI or save payload.
+- **Preferred payout** radio: **USDT** (default) | **BTC**.
 - Rules shown plainly:
-  - **No per-asset payout minimum** for BTC/USDT/XMR (BTC fees are low enough for v1).
+  - **No per-asset payout minimum** for BTC/USDT (BTC fees are low enough for v1).
   - **Prize amounts** themselves have a floor (target **~$10** smallest prize) so fees stay sane vs winnings.
   - User can prefer BTC even on small wins; operator sends manually.
 - **Validate on blur**: checksum/format only (no chain broadcast). Green check / red fix message.
@@ -116,24 +115,29 @@ Single screen: **Where should winnings go?**
 No login. Changing addresses is allowed anytime before a win is locked for payout.
 
 ### 3.4 Settings (few)
-1. **CPU limit:** 25% / 50% / 75% / Max (default **50%**).
-2. **Start when idle:** after **1 / 5 / 10 / 30** minutes (default **5**).
-3. **When I’m back:**
-   - Immediate soft throttle to ~10% for ≤2s, then **full stop** within ~3–5s.
-   - Preference: “Pause until I click Start” (default) vs “Resume after idle again.”
-4. **On battery:** **Off by default** (do not earn while on battery). Optional checkbox: “Allow earning on battery.” v1 ships with this default — not a later hardening item.
-5. **Launch at login** (OS optional checkbox).
-6. **Referral:** show my link + copy button; “Friends’ wins give you 10% extra.”
+1. **While I’m using the computer:** CPU % for earning — **0% / 25% / 50% / 75% / 100%**. Default **0%** (idle-only; yield the machine). 0% means pause the worker while in use.
+2. **When idle:** separate CPU % — **25% / 50% / 75% / 100%**. Default **50%**. Applied on **Start**, and again when idle after activity.
+3. **Consider idle after:** **1 / 5 / 10 / 30** minutes (default **5**). Best-effort activity heuristic until full OS idle APIs land.
+4. **If earning pauses while I’m using the computer:**
+   - “Stay paused until I press Start” (default)
+   - “Automatically resume idle earning”
+5. **On battery:** **Off by default**. Optional: “Allow earning on battery.”
+6. **Bonus goes to (referral code):** editable anytime before a win is locked — who gets the **10% bonus if this device wins** (not a locked forever install code). Invite/copy lives on Home.
+7. **API base URL:** testing/dev only — under a collapsed **Advanced / Developer** disclosure (default `http://127.0.0.1:8787`). Hidden from normal Settings.
+8. **Launch at login** (OS optional checkbox; later).
+9. Optional **Details / log** disclosure for device id / debug — not the referral UX.
 
 ### 3.5 Idle & responsiveness (hard requirements)
-- Use OS idle APIs (Windows last-input, macOS idle time, Linux screensaver/IdleHint or read `/proc` + X11/Wayland idle where available).
-- On user input: **stop mining threads ASAP** (don’t wait for current RandomX job to feel laggy). Target: UI thread never blocked; mining in subprocess.
-- Architecture: **supervisor UI** + **worker child process** (pinned RandomX / provider worker). Kill/pause child on activity. Also stop/pause when on battery unless user opted in.
+- Dual CPU model: switch between **in-use %** and **idle %**. If in-use is **0%**, stop/don’t run the worker until idle (or until Start, per preference).
+- **v1 shipping:** persist both percentages; **Start applies idle %**. Best-effort activity heuristic (e.g. input in the app window) switches modes; full OS idle APIs (Windows last-input, macOS idle time, Linux IdleHint / X11/Wayland) are next.
+- On user activity with in-use 0%: stop worker ASAP. Target: UI thread never blocked; work in subprocess.
+- Architecture: **supervisor UI** + **worker child process** (work-config / pool plumbing under the hood). Kill/pause child on activity. Also stop/pause when on battery unless user opted in.
+- User-visible copy: prize/entries/idle only — no RandomX, stratum, pool, or miner jargon on Home/Settings.
 
 ### 3.6 Invite friends
-- Each device has `ref_code` (short, human, e.g. 8 chars).
+- Each device has its own `ref_code` (short, human, e.g. 8 chars) shown on Home for sharing.
 - Link: `https://<site>/r/<ref_code>` → download page with ref baked in.
-- When referred device is first registered, store `referred_by`.
+- Settings field **“Bonus goes to (referral code)”** sets/changes `referred_by` anytime before a win is locked (not a one-shot install lock).
 - If a referred device wins, referrer gets **+10% of that prize** as an extra payout (winner still gets 100%). Example: $1,000 win → winner $1,000, referrer $100, both from treasury.
 - Multi-device self-referral is allowed (accepted).
 - Reinstall creates a **new** `device_id` (new competitor). Same payout address across devices/reinstalls is normal and fine — many users will point several machines at one USDT/BTC address.

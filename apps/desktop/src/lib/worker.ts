@@ -1,13 +1,16 @@
 /**
- * Supervisor for real XMRig (RandomX → Nanopool).
+ * Supervisor for the background worker (work-config → pool).
  * Binary is fetched locally via `npm run fetch-worker` (not committed).
+ * User-facing copy stays prize/entries; this module is plumbing only.
  */
 
 import { fetchWorkConfig, type WorkConfig } from "./api";
 
-export type WorkerStatus = "off" | "earning" | "paused";
+export type WorkerStatus = "off" | "earning" | "paused" | "waiting_idle";
 
 let running = false;
+let lastOpts: { deviceId: string; cpuPercent: number; apiBase: string } | null =
+  null;
 
 export function isWorkerRunning() {
   return running;
@@ -44,11 +47,25 @@ export async function startWorker(opts: {
   cpuPercent: number;
   apiBase: string;
 }): Promise<void> {
-  if (running) return;
+  if (opts.cpuPercent <= 0) {
+    await stopWorker();
+    return;
+  }
+
+  // Restart if already running at a different %
+  if (running) {
+    const same =
+      lastOpts &&
+      lastOpts.deviceId === opts.deviceId &&
+      lastOpts.apiBase === opts.apiBase &&
+      lastOpts.cpuPercent === opts.cpuPercent;
+    if (same) return;
+    await stopWorker();
+  }
 
   const work = await fetchWorkConfig(opts.apiBase);
   if (work.pause_network) {
-    throw new Error("Network earning is paused by the server (pause_network).");
+    throw new Error("Network earning is paused by the server. Try again later.");
   }
   const wallet = work.wallet?.trim();
   if (!wallet) {
@@ -88,7 +105,7 @@ export async function startWorker(opts: {
     throw new Error(
       msg.includes("fetch-worker")
         ? msg
-        : `XMRig binary missing. Run: cd apps/desktop && npm run fetch-worker (${msg})`
+        : `Worker binary missing. Run: cd apps/desktop && npm run fetch-worker (${msg})`
     );
   }
 
@@ -103,13 +120,15 @@ export async function startWorker(opts: {
   });
 
   running = true;
+  lastOpts = { ...opts };
   console.log(
-    `[worker] XMRig started user=${user} threads=${threads} pool=${pools[0]?.url}`
+    `[worker] started user=${user} threads=${threads} cpu%=${opts.cpuPercent} pool=${pools[0]?.url}`
   );
 }
 
 export async function stopWorker(): Promise<void> {
   running = false;
+  lastOpts = null;
   try {
     const { invoke } = await import("@tauri-apps/api/core");
     await invoke("stop_worker");

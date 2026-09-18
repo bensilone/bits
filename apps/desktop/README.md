@@ -3,7 +3,7 @@
 ## Dev
 
 ```bash
-# API should be running at http://localhost:8787 (or change Settings → API base URL)
+# API should be running at http://127.0.0.1:8787 (Settings → Advanced / Developer to override)
 cd apps/desktop
 npm run fetch-worker   # download pinned XMRig v6.26.0 into binaries/xmrig/ (gitignored)
 npm run tauri:dev

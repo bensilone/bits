@@ -32,9 +32,8 @@ export async function savePayout(apiBase: string, deviceId: string, s: Settings)
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       usdt_address: s.usdtAddress || null,
-      usdt_network: s.usdtNetwork,
+      usdt_network: "TRC20",
       btc_address: s.btcAddress || null,
-      xmr_address: s.xmrAddress || null,
       preferred_asset: s.preferredAsset,
     }),
   });

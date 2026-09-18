@@ -28,10 +28,38 @@ devicesRouter.post("/register", async (req, res) => {
     device_id,
   ]);
   if (existing.rows.length) {
-    await query(
-      "UPDATE devices SET last_seen_at = NOW(), app_version = COALESCE($2, app_version), os = COALESCE($3, os), updated_at = NOW() WHERE id = $1",
-      [device_id, app_version ?? null, os ?? null]
-    );
+    // Referral bonus target is editable anytime (until a win is locked in draw ops).
+    let referredByUpdate: string | null | undefined = undefined;
+    if (ref_code !== undefined) {
+      referredByUpdate = null;
+      if (ref_code) {
+        const ref = await query<{ id: string }>(
+          "SELECT id FROM devices WHERE ref_code = $1",
+          [ref_code.toUpperCase()]
+        );
+        if (ref.rows[0] && ref.rows[0].id !== device_id) {
+          referredByUpdate = ref.rows[0].id;
+        }
+      }
+      await query(
+        `UPDATE devices SET last_seen_at = NOW(), app_version = COALESCE($2, app_version),
+         os = COALESCE($3, os), referred_by = $4, updated_at = NOW() WHERE id = $1`,
+        [device_id, app_version ?? null, os ?? null, referredByUpdate]
+      );
+      await query(`DELETE FROM referrals WHERE referred_id = $1`, [device_id]);
+      if (referredByUpdate) {
+        await query(
+          `INSERT INTO referrals (referrer_id, referred_id) VALUES ($1, $2)
+           ON CONFLICT (referred_id) DO UPDATE SET referrer_id = EXCLUDED.referrer_id`,
+          [referredByUpdate, device_id]
+        );
+      }
+    } else {
+      await query(
+        "UPDATE devices SET last_seen_at = NOW(), app_version = COALESCE($2, app_version), os = COALESCE($3, os), updated_at = NOW() WHERE id = $1",
+        [device_id, app_version ?? null, os ?? null]
+      );
+    }
     const pe = await query(
       "SELECT entries, lifetime_entries FROM period_entries WHERE device_id = $1",
       [device_id]
@@ -96,6 +124,7 @@ const payoutSchema = z.object({
   usdt_address: z.string().max(128).nullable().optional(),
   usdt_network: z.enum(["TRC20", "ERC20"]).optional(),
   btc_address: z.string().max(128).nullable().optional(),
+  // Desktop UI no longer collects XMR; field kept optional for older clients.
   xmr_address: z.string().max(200).nullable().optional(),
   preferred_asset: z.enum(["USDT", "BTC", "XMR"]).optional(),
 });
