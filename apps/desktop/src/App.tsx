@@ -33,7 +33,10 @@ export default function App() {
       setNextAward(sum.next_award?.next_award_at ?? null);
       setMsg("");
     } catch (e) {
-      setMsg(`API unreachable (${settings.apiBaseUrl}). Start the API locally.`);
+      const detail = e instanceof Error ? e.message : String(e);
+      setMsg(
+        `API unreachable (${settings.apiBaseUrl}). ${detail}. Is the API up? Try curl ${settings.apiBaseUrl}/health`
+      );
     }
   }, [deviceId, settings.apiBaseUrl, settings.referralCode]);
 

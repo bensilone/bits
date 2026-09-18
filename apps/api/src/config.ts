@@ -18,7 +18,10 @@ export const config = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   databaseUrl:
     process.env.DATABASE_URL ?? "postgres://sparks:sparks@localhost:5432/sparks",
-  corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
+  // Desktop Tauri Vite is :1420; marketing web is :5173
+  corsOrigin:
+    process.env.CORS_ORIGIN ??
+    "http://localhost:5173,http://localhost:1420,http://127.0.0.1:5173,http://127.0.0.1:1420",
   jwtSecret: process.env.JWT_SECRET ?? "dev-jwt-secret-change-me",
   sessionSecret: process.env.SESSION_SECRET ?? "dev-session-secret",
   adminUser: process.env.ADMIN_USER ?? "admin",

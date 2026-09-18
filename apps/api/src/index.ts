@@ -55,9 +55,24 @@ async function main() {
   await seedSettings();
 
   const app = express();
+  const allowedOrigins = config.corsOrigin.split(",").map((s) => s.trim()).filter(Boolean);
   app.use(
     cors({
-      origin: config.corsOrigin.split(",").map((s) => s.trim()),
+      origin(origin, cb) {
+        // Non-browser / same-origin tools (no Origin header)
+        if (!origin) return cb(null, true);
+        if (allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
+          return cb(null, true);
+        }
+        // Local Tauri/Vite ports during development
+        if (
+          config.isDev &&
+          /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+        ) {
+          return cb(null, true);
+        }
+        return cb(new Error(`CORS blocked for origin: ${origin}`));
+      },
       credentials: true,
     })
   );
