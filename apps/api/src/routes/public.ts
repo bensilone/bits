@@ -95,20 +95,38 @@ function maskAddress(addr: string | null): string | null {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
+const NANOPOOL_SSL_POOLS = [
+  "xmr-eu1.nanopool.org:10343",
+  "xmr-eu2.nanopool.org:10343",
+  "xmr-us-east1.nanopool.org:10343",
+  "xmr-us-west1.nanopool.org:10343",
+  "xmr-asia1.nanopool.org:10343",
+  "xmr-jp1.nanopool.org:10343",
+  "xmr-au1.nanopool.org:10343",
+] as const;
+
 publicRouter.get("/work-config", async (_req, res) => {
+  const wallet =
+    config.xmrTreasuryAddress && !config.xmrTreasuryAddress.startsWith("YOUR_")
+      ? config.xmrTreasuryAddress
+      : null;
   res.json({
     config_version: 1,
     rates_version: config.ratesVersion,
     credits_per_entry: config.creditsPerEntry,
     provider: "nanopool",
     work_type: "xmr_randomx",
+    algo: "rx/0",
     pool_url: "xmr-us-east1.nanopool.org:10343",
-    failover_pool_url: null,
-    wallet:
-      config.xmrTreasuryAddress && !config.xmrTreasuryAddress.startsWith("YOUR_")
-        ? config.xmrTreasuryAddress
-        : null,
-    note: "Stratum stub — desktop worker plugs RandomX/Nanopool here. Do not ship XMRig binary in-repo.",
+    pool_urls: [...NANOPOOL_SSL_POOLS],
+    failover_pool_url: "xmr-us-west1.nanopool.org:10343",
+    tls: true,
+    wallet,
+    user_template: "{wallet}.{worker}",
+    worker_field: "device_id",
+    pass: "x",
+    note:
+      "Stratum user = treasury wallet + '.' + device_id (UUID). Algo rx/0 (RandomX). Do not ship XMRig binary in-repo.",
     pause_network: false,
   });
 });

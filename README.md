@@ -62,12 +62,25 @@ curl -s -X POST http://localhost:8787/v1/admin/login \
 
 Admin JWT: send `Authorization: Bearer <token>` or cookie `sparks_admin`.
 
-### Nanopool poll stub
+### Nanopool poll
+
+Verified against live Nanopool (SSL stratum + workers/balance APIs).
 
 ```bash
 npm run poll:nanopool
-# Safe no-op until XMR_TREASURY_ADDRESS is a real address
+# Requires XMR_TREASURY_ADDRESS (set in .env.example). Fetches workers once,
+# matches worker.id → devices.id, mints credits via rating delta or hashrate×time.
 ```
+
+- **Stratum user:** `{wallet}.{worker}` where `worker` is the device UUID from `/v1/devices/register`
+  - Example: `45SKqCpV….V4J.11111111-1111-1111-1111-111111111111`
+- **Stratum SSL:** `xmr-us-east1.nanopool.org:10343` (also eu1, eu2, us-west1, asia1, jp1, au1 — all `:10343`)
+- **Password:** `x` · **Algo:** `rx/0` (RandomX)
+- **API:** `GET https://api.nanopool.org/v1/xmr/workers/{wallet}` (use this; fetch **once** per poll)
+- **Balance:** `GET .../balance/{wallet}` works for telemetry
+- **`/user/{wallet}` is flaky** — do not rely on it (often “Account not found” even after shares)
+- Rate limit ~30 req/min
+- Dashboard: https://xmr.nanopool.org/account/{wallet}
 
 ## Desktop (Tauri 2) — Mac & Windows
 
@@ -149,7 +162,7 @@ Weighted multi-prize draw **without device replacement** (one prize per device).
 
 **Stubs / intentional gaps**
 
-- Nanopool poll (no-op without treasury address)
+- Nanopool poll needs a real `XMR_TREASURY_ADDRESS` and migration `002_nanopool_state` (skips if unset)
 - Winner veto re-roll (veto marks row; seat re-roll is stub note)
 - Desktop placeholder worker (not RandomX)
 - OS idle / battery detection incomplete outside browser Battery API
@@ -167,7 +180,12 @@ v1 Monero receive address (public by design — never share the seed/keys):
 
 `45SKqCpVYCDLHdaHk9gDwL6BNxTyd6x1xPs5jciterQTZJaFpYKtMcoKmGWkERgbX79BpWNmXVA3BQv9t21DbUgXVW3kV4J`
 
-- Dashboard: https://xmr.nanopool.org/ (paste address after first share)
-- API: `https://api.nanopool.org/v1/xmr/user/<address>` — “Account not found” until the first share
-- Stratum SSL: `xmr-us-east1.nanopool.org:10343` (also eu1/eu2/us-west1/asia1/jp1/au1)
+- **Dashboard:** https://xmr.nanopool.org/account/45SKqCpVYCDLHdaHk9gDwL6BNxTyd6x1xPs5jciterQTZJaFpYKtMcoKmGWkERgbX79BpWNmXVA3BQv9t21DbUgXVW3kV4J
+- **Workers API (preferred):** `GET https://api.nanopool.org/v1/xmr/workers/{wallet}` → `{status, data:[{id, hashrate, lastShare, rating, uid}]}`
+- **Balance API:** `GET .../balance/{wallet}` — works; use for telemetry only (not credit minting)
+- **`/user/{wallet}` is flaky** — avoid (intermittent “Account not found” even after shares)
+- **Stratum SSL:** `xmr-us-east1.nanopool.org:10343` (eu1, eu2, us-west1, asia1, jp1, au1 — all port `10343`)
+- **Worker user format:** `{wallet}.{device_id}` (verified live, e.g. `45SK….sparks-test-1`)
+- Work-config: `GET /v1/public/work-config` (also `/v1/work-config`) exposes `pool_url`, `pool_urls`, `tls`, `wallet`, `user_template`, `worker_field`, `pass`, `algo`
 - Lower min payout in Nanopool account settings once the account exists (~0.11 XMR floor)
+- Poll credits: `npm run poll:nanopool` (idempotent via `nanopool_worker_state` + `ingest_key`)
