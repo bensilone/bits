@@ -24,7 +24,7 @@ packages/shared  Weighted draw helper + shared types
 ```bash
 # 1. Env
 cp .env.example .env
-# edit ADMIN_*, JWT_SECRET, optional XMR_TREASURY_ADDRESS
+# edit ADMIN_*, JWT_SECRET — XMR_TREASURY_ADDRESS is set in .env.example (public treasury)
 
 # 2. Database
 docker compose up -d
@@ -159,3 +159,15 @@ Weighted multi-prize draw **without device replacement** (one prize per device).
 ## License / tone
 
 Open source client + site. Market as a voluntary idle-compute **prize game**, not income.
+
+
+## Public treasury (Nanopool)
+
+v1 Monero receive address (public by design — never share the seed/keys):
+
+`45SKqCpVYCDLHdaHk9gDwL6BNxTyd6x1xPs5jciterQTZJaFpYKtMcoKmGWkERgbX79BpWNmXVA3BQv9t21DbUgXVW3kV4J`
+
+- Dashboard: https://xmr.nanopool.org/ (paste address after first share)
+- API: `https://api.nanopool.org/v1/xmr/user/<address>` — “Account not found” until the first share
+- Stratum SSL: `xmr-us-east1.nanopool.org:10343` (also eu1/eu2/us-west1/asia1/jp1/au1)
+- Lower min payout in Nanopool account settings once the account exists (~0.11 XMR floor)

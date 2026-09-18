@@ -102,7 +102,7 @@ publicRouter.get("/work-config", async (_req, res) => {
     credits_per_entry: config.creditsPerEntry,
     provider: "nanopool",
     work_type: "xmr_randomx",
-    pool_url: "xmr-us-east1.nanopool.org:14444",
+    pool_url: "xmr-us-east1.nanopool.org:10343",
     failover_pool_url: null,
     wallet:
       config.xmrTreasuryAddress && !config.xmrTreasuryAddress.startsWith("YOUR_")
