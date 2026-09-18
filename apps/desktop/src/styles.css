@@ -1,0 +1,40 @@
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #0f172a;
+  background: #f8fafc;
+  line-height: 1.45;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+.app { max-width: 420px; margin: 0 auto; padding: 20px 16px 40px; min-height: 100vh; }
+.tabs { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+.tabs button {
+  border: 1px solid #e2e8f0; background: white; border-radius: 999px;
+  padding: 8px 14px; font-weight: 600; cursor: pointer; font-size: 0.85rem;
+}
+.tabs button.active { background: #0ea5e9; color: white; border-color: #0ea5e9; }
+.card {
+  background: white; border: 1px solid #e2e8f0; border-radius: 16px;
+  padding: 20px; box-shadow: 0 8px 24px rgba(15,23,42,0.05);
+}
+.status { font-size: 1.35rem; font-weight: 700; margin: 0 0 4px; }
+.muted { color: #64748b; font-size: 0.9rem; }
+.big { font-size: 2.4rem; font-weight: 700; margin: 12px 0 4px; }
+.btn {
+  width: 100%; margin-top: 16px; padding: 14px; border: none; border-radius: 999px;
+  background: #0ea5e9; color: white; font-weight: 700; font-size: 1.05rem; cursor: pointer;
+}
+.btn.pause { background: #64748b; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+label { display: block; font-size: 0.85rem; font-weight: 600; margin: 12px 0 4px; }
+input, select {
+  width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #e2e8f0;
+  font-size: 0.95rem;
+}
+.row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+.row input[type="checkbox"] { width: auto; }
+.callout {
+  background: #fffbeb; border: 1px solid #fde68a; color: #92400e;
+  border-radius: 12px; padding: 12px; font-size: 0.85rem; margin-top: 14px;
+}
+.footer-links { margin-top: 16px; font-size: 0.85rem; color: #64748b; text-align: center; }

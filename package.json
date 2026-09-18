@@ -1,0 +1,21 @@
+{
+  "name": "sparks",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sparks — idle compute → lottery entries → win USDT/BTC (public: winbitcoin.app)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w @sparks/api",
+    "dev:web": "npm run dev -w @sparks/web",
+    "build": "npm run build -w @sparks/shared && npm run build -w @sparks/api && npm run build -w @sparks/web",
+    "db:migrate": "npm run migrate -w @sparks/api",
+    "db:up": "docker compose up -d",
+    "poll:nanopool": "npm run poll:nanopool -w @sparks/api"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
