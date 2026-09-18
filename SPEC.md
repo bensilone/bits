@@ -485,29 +485,29 @@ Kill-switch / pause via signed config remains mandatory if a build gets burned b
 | USDT | **TRC20** default |
 | Hosting | **Google Cloud** (see §9.1) |
 | Backend | Cloud Run (Go/Node) + **Cloud SQL Postgres** |
-| Site | Firebase Hosting or Cloud Run-served static/Next |
+| Site | Cloud Run (static/nginx) — second service |
 | Admin auth | Simple username/password (2 accounts); can sit in front of admin routes |
 | Draw tool | Same draw code in repo; runnable from operator machine or admin UI |
 | Rates | Public price API for USD estimates only |
 
 Pin worker version; reproducible builds from source for trust.
 
-### 9.1 Google / Firebase: what to use
+### 9.1 Google Cloud hosting (no Firebase required)
 
-Firebase alone is great for the **website** and light glue; the **entries ledger** wants SQL.
+v1 hosts entirely on **Google Cloud** without Firebase Hosting or Firestore for the ledger. The entries ledger stays in SQL.
 
 | Need | Fit |
 |------|-----|
-| Public site (Home, Fairness, Announcements, Download) | **Firebase Hosting** ✓ |
-| HTTPS, CDN, custom domain later | Firebase Hosting ✓ |
-| Device API, credit mint, award events, admin | **Cloud Run** (container) ✓ — prefer over only Cloud Functions if you want a normal long-lived HTTP API |
-| Entries / devices / awards / idempotent ingest | **Cloud SQL (Postgres)** ✓ — better than Firestore for weighted draws, snapshots, `TICKET_ROOT` |
-| Cron: poll Nanopool workers | Cloud Scheduler → Cloud Run job/endpoint ✓ |
-| Secrets (pool wallet is public; admin password, signing keys) | Secret Manager ✓ |
-| Operator login | App-level username/password (as spec’d); optional Firebase Auth later — not required for v1 |
-| Firestore as primary DB | **Skip for v1 ledger** — possible later for announcements cache only |
+| Public site (Home, Fairness, Announcements, Download) | **Cloud Run** (static container / nginx) ✓ — second service |
+| HTTPS + custom domain | Cloud Run managed SSL / domain mapping ✓ |
+| Device API, credit mint, award events, admin | **Cloud Run** (API container) ✓ |
+| Entries / devices / awards / idempotent ingest | **Cloud SQL (Postgres)** ✓ — weighted draws, snapshots, `TICKET_ROOT` |
+| Cron: poll Nanopool workers | **Cloud Scheduler** → `POST /v1/internal/poll-nanopool` with shared-secret header ✓ |
+| Secrets (admin passwords, JWT, DB URL, poll secret) | **Secret Manager** ✓ |
+| Operator login | App-level username/password (as spec’d); no Firebase Auth required for v1 |
+| Firestore / Firebase Hosting | **Not required for v1** |
 
-**Recommended shape:** Firebase Hosting (site) + Cloud Run (API/admin) + Cloud SQL Postgres + Cloud Scheduler (Nanopool poll). All on the same Google project. That is “hosting on Google” without forcing the lottery math into Firestore documents.
+**Recommended shape:** Cloud Run (API) + Cloud Run (site) + Cloud SQL Postgres + Cloud Scheduler (Nanopool poll) + Secret Manager. Same Google project. See `deploy/gcp/README.md`.
 
 ---
 
@@ -576,7 +576,7 @@ This document + name + prize % + CREDITS_PER_ENTRY / multiplier calibration plan
 - **Public domain lean:** winbitcoin.app.
 - **Pool:** Nanopool for v1; signed remote config can point elsewhere later.
 - **USDT network:** TRC20 default.
-- **Hosting:** Google Cloud — Firebase Hosting for the public site; Cloud Run + Cloud SQL Postgres for API/ledger; Cloud Scheduler for pool polls.
+- **Hosting:** Google Cloud — Cloud Run (API + site) + Cloud SQL Postgres + Cloud Scheduler + Secret Manager (no Firebase required).
 - Project name **Sparks** for now; domain later.
 - No BTC payout minimum; smallest **prizes** ≈ $10.
 - **Entry rule:** one period bank since last wipe; award events draw from that pool; **every event wipes everyone**. Daily/weekly = **separate races**. Lifetime stats only.

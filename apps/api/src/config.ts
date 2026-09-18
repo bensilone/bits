@@ -32,5 +32,7 @@ export const config = {
   creditsPerEntry: num("CREDITS_PER_ENTRY", 1000),
   nanopoolMultiplier: num("NANOPOOL_MULTIPLIER", 1.0),
   ratesVersion: num("RATES_VERSION", 1),
+  /** Shared secret for Cloud Scheduler → POST /v1/internal/poll-nanopool */
+  internalPollSecret: process.env.INTERNAL_POLL_SECRET ?? "",
   isDev: (process.env.NODE_ENV ?? "development") !== "production",
 };

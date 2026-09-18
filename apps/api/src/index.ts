@@ -11,6 +11,7 @@ import { devicesRouter } from "./routes/devices.js";
 import { publicRouter } from "./routes/public.js";
 import { adminRouter } from "./routes/admin.js";
 import { devRouter } from "./routes/dev.js";
+import { internalRouter } from "./routes/internal.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -125,6 +126,7 @@ async function main() {
   app.use("/v1/public", publicRouter);
   app.use("/v1/admin", adminRouter);
   app.use("/v1/dev", devRouter);
+  app.use("/v1/internal", internalRouter);
 
   // Spec path alias
   app.use("/v1", publicRouter);

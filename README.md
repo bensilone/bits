@@ -183,7 +183,7 @@ Weighted multi-prize draw **without device replacement** (one prize per device).
 - Desktop XMRig is fetched locally (not in git); AV / Gatekeeper / huge pages are operator concerns
 - OS idle / battery detection incomplete outside browser Battery API
 - No signed work-config yet
-- No Firebase / Cloud Run deploy configs in this milestone
+- GCP deploy scaffolding under `deploy/gcp/` (Cloud Run + Cloud SQL + Scheduler; no Firebase)
 
 ## License / tone
 
