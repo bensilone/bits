@@ -30,7 +30,6 @@ echo "==> Cloud SQL=$SQL_CONNECTION"
 gcloud config set project "$PROJECT" >/dev/null
 
 if [[ "${USE_CLOUD_BUILD:-1}" == "1" ]] || ! command -v docker >/dev/null 2>&1; then
-  if [[ "${USE_CLOUD_BUILD:-1}" == "1" ]] || ! command -v docker >/dev/null 2>&1; then
   echo "==> Building+pushing via Cloud Build (no local Docker required)"
   gcloud builds submit --project="$PROJECT" \
     --config=deploy/gcp/cloudbuild-api.yaml \

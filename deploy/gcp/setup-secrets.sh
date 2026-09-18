@@ -22,13 +22,7 @@ echo "Project=$PROJECT"
 echo "Enter the Cloud SQL password for user '$DB_USER' (input hidden):"
 read -rs DB_PASS
 echo
-# URL-encode password minimally for DATABASE_URL
-python3 - "$DB_PASS" "$DB_USER" "$DB_NAME" "$SQL_CONNECTION" <<'PY'
-import sys, urllib.parse
-pw, user, db, conn = sys.argv[1:5]
-enc = urllib.parse.quote(pw, safe="")
-print(f"postgres://{user}:{enc}@/{db}?host=/cloudsql/{conn}")
-PY
+# URL-encode password minimally for DATABASE_URL (never print)
 DATABASE_URL="$(python3 - "$DB_PASS" "$DB_USER" "$DB_NAME" "$SQL_CONNECTION" <<'PY'
 import sys, urllib.parse
 pw, user, db, conn = sys.argv[1:5]

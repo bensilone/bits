@@ -9,7 +9,8 @@ COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY apps/desktop/package.json apps/desktop/
 
-RUN npm ci --workspace=@sparks/shared --workspace=@sparks/api --include-workspace-root
+# Skip postinstall (build:shared) — sources are not copied yet
+RUN npm ci --ignore-scripts --workspace=@sparks/shared --workspace=@sparks/api --include-workspace-root
 
 COPY packages/shared packages/shared
 COPY apps/api apps/api
@@ -29,7 +30,7 @@ COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 COPY apps/desktop/package.json apps/desktop/
 
-RUN npm ci --omit=dev --workspace=@sparks/shared --workspace=@sparks/api --include-workspace-root \
+RUN npm ci --omit=dev --ignore-scripts --workspace=@sparks/shared --workspace=@sparks/api --include-workspace-root \
   && npm cache clean --force
 
 COPY --from=build /app/packages/shared/dist packages/shared/dist
