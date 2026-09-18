@@ -29,12 +29,20 @@ echo "==> Cloud SQL=$SQL_CONNECTION"
 
 gcloud config set project "$PROJECT" >/dev/null
 
-echo "==> Building API image (context=repo root)"
-docker build -f apps/api/Dockerfile -t "$IMAGE" -t "$LATEST" .
-
-echo "==> Pushing"
-docker push "$IMAGE"
-docker push "$LATEST"
+if [[ "${USE_CLOUD_BUILD:-1}" == "1" ]] || ! command -v docker >/dev/null 2>&1; then
+  if [[ "${USE_CLOUD_BUILD:-1}" == "1" ]] || ! command -v docker >/dev/null 2>&1; then
+  echo "==> Building+pushing via Cloud Build (no local Docker required)"
+  gcloud builds submit --project="$PROJECT" \
+    --config=deploy/gcp/cloudbuild-api.yaml \
+    --substitutions=_IMAGE="$IMAGE",_LATEST="$LATEST" \
+    .
+else
+  echo "==> Building API image locally (context=repo root)"
+  docker build -f apps/api/Dockerfile -t "$IMAGE" -t "$LATEST" .
+  echo "==> Pushing"
+  docker push "$IMAGE"
+  docker push "$LATEST"
+fi
 
 # Secret Manager refs (secret name == env var name)
 SECRETS=(
