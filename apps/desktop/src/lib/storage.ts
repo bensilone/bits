@@ -15,7 +15,7 @@ export interface Settings {
 }
 
 export const defaultSettings: Settings = {
-  apiBaseUrl: "http://localhost:8787",
+  apiBaseUrl: "http://127.0.0.1:8787",
   cpuPercent: 50,
   idleDelayMin: 5,
   whenBack: "pause",

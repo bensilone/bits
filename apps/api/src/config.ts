@@ -21,7 +21,7 @@ export const config = {
   // Desktop Tauri Vite is :1420; marketing web is :5173
   corsOrigin:
     process.env.CORS_ORIGIN ??
-    "http://localhost:5173,http://localhost:1420,http://127.0.0.1:5173,http://127.0.0.1:1420",
+    "http://localhost:5173,http://localhost:1420,http://127.0.0.1:5173,http://127.0.0.1:1420,tauri://localhost,http://tauri.localhost,https://tauri.localhost",
   jwtSecret: process.env.JWT_SECRET ?? "dev-jwt-secret-change-me",
   sessionSecret: process.env.SESSION_SECRET ?? "dev-session-secret",
   adminUser: process.env.ADMIN_USER ?? "admin",

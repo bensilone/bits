@@ -84,6 +84,15 @@ npm run poll:nanopool
 
 ## Desktop (Tauri 2) — Mac & Windows
 
+**Mac local-dev notes (networking):**
+
+- Keep the API on **`:8787`**. In Settings, set API base to **`http://127.0.0.1:8787`** (prefer `127.0.0.1` over `localhost` — WKWebView/`localhost` can hit IPv6/`[::1]` issues).
+- Desktop API calls go through **Tauri’s HTTP plugin** (Rust), not the WebView `fetch()`, with a normal fetch fallback for browser/Vite.
+- HTTP allow-list uses `http://*` / `https://*` (plus explicit `:8787`) — **do not** put `[::1]` in that list (it broke requests).
+- Build/run from a real working copy (e.g. `~/Downloads/sparks-main` or this clone). **Don’t build from Trash** or a deleted zip folder — Gatekeeper/path weirdness and stale trees cause confusing failures.
+- `Info.plist` enables local-network / ATS allowances for talking to the local API.
+
+
 ```bash
 cd apps/desktop
 npm install   # if not using workspaces root install

@@ -56,12 +56,52 @@ async function main() {
 
   const app = express();
   const allowedOrigins = config.corsOrigin.split(",").map((s) => s.trim()).filter(Boolean);
+  const tauriOrigins = new Set([
+    "tauri://localhost",
+    "http://tauri.localhost",
+    "https://tauri.localhost",
+  ]);
+  // Chrome/WKWebView private-network preflight (Access-Control-Request-Private-Network)
+  app.use((req, res, next) => {
+    res.setHeader("Access-Control-Allow-Private-Network", "true");
+    if (
+      req.method === "OPTIONS" &&
+      req.headers["access-control-request-private-network"] === "true"
+    ) {
+      const origin = req.headers.origin;
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        allowedOrigins.includes("*") ||
+        tauriOrigins.has(origin) ||
+        (config.isDev &&
+          /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin))
+      ) {
+        if (origin) res.setHeader("Access-Control-Allow-Origin", origin);
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+        res.setHeader(
+          "Access-Control-Allow-Methods",
+          "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS"
+        );
+        const reqHeaders = req.headers["access-control-request-headers"];
+        if (reqHeaders) {
+          res.setHeader("Access-Control-Allow-Headers", reqHeaders);
+        }
+        return res.status(204).end();
+      }
+    }
+    next();
+  });
   app.use(
     cors({
       origin(origin, cb) {
         // Non-browser / same-origin tools (no Origin header)
         if (!origin) return cb(null, true);
         if (allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
+          return cb(null, true);
+        }
+        // Packaged Tauri WebView origins (WKWebView / WebView2)
+        if (tauriOrigins.has(origin)) {
           return cb(null, true);
         }
         // Local Tauri/Vite ports during development

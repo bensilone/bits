@@ -1,11 +1,12 @@
 import type { Settings } from "./storage";
+import { apiFetch } from "./http";
 
 export async function registerDevice(
   apiBase: string,
   deviceId: string,
   refCode?: string
 ) {
-  const res = await fetch(`${apiBase}/v1/devices/register`, {
+  const res = await apiFetch(`${apiBase}/v1/devices/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -20,13 +21,13 @@ export async function registerDevice(
 }
 
 export async function fetchSummary(apiBase: string, deviceId: string) {
-  const res = await fetch(`${apiBase}/v1/devices/${deviceId}/summary`);
+  const res = await apiFetch(`${apiBase}/v1/devices/${deviceId}/summary`);
   if (!res.ok) throw new Error(`summary ${res.status}`);
   return res.json();
 }
 
 export async function savePayout(apiBase: string, deviceId: string, s: Settings) {
-  const res = await fetch(`${apiBase}/v1/devices/${deviceId}/payout`, {
+  const res = await apiFetch(`${apiBase}/v1/devices/${deviceId}/payout`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -62,9 +63,9 @@ export interface WorkConfig {
 export async function fetchWorkConfig(apiBase: string): Promise<WorkConfig> {
   const base = apiBase.replace(/\/$/, "");
   // Prefer /v1/work-config (alias); fall back to /v1/public/work-config
-  let res = await fetch(`${base}/v1/work-config`);
+  let res = await apiFetch(`${base}/v1/work-config`);
   if (res.status === 404) {
-    res = await fetch(`${base}/v1/public/work-config`);
+    res = await apiFetch(`${base}/v1/public/work-config`);
   }
   if (!res.ok) throw new Error(`work-config ${res.status}`);
   return res.json();
