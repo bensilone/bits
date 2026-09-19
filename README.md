@@ -2,7 +2,7 @@
 
 **Public brand:** [bitsprize.com](https://bitsprize.com)
 
-Idle CPU → verified compute → lottery entries → win **USDT (TRC20)** or **BTC**.
+Spare compute → verified work → prize entries → win **BTC** or **USDT (TRC20)**.
 
 This repository is the **Bits desktop app** (Tauri 2 for Mac and Windows). The backend is private; the app talks to the live Bits API by default.
 
