@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getOrCreateDeviceId,
+  getWorkerSecret,
   loadSettings,
   saveSettings,
+  saveWorkerSecret,
   type Settings,
 } from "./lib/storage";
 import { fetchSummary, registerDevice, savePayout } from "./lib/api";
@@ -105,6 +107,9 @@ export default function App() {
         deviceId,
         settings.referralCode
       );
+      if (typeof reg.worker_secret === "string" && reg.worker_secret) {
+        saveWorkerSecret(reg.worker_secret);
+      }
       setRefCode(reg.ref_code);
       const sum = await fetchSummary(settings.apiBaseUrl, deviceId);
       setEntries(sum.entries ?? 0);
@@ -194,10 +199,26 @@ export default function App() {
 
   async function syncPayout() {
     try {
-      await savePayout(settings.apiBaseUrl, deviceId, settings);
+      let secret = getWorkerSecret();
+      if (!secret) {
+        const reg = await registerDevice(
+          settings.apiBaseUrl,
+          deviceId,
+          settings.referralCode
+        );
+        if (typeof reg.worker_secret === "string" && reg.worker_secret) {
+          saveWorkerSecret(reg.worker_secret);
+          secret = reg.worker_secret;
+        }
+      }
+      if (!secret) {
+        setMsg("Could not save payout — missing device secret. Restart the app once.");
+        return;
+      }
+      await savePayout(settings.apiBaseUrl, deviceId, settings, secret);
       setMsg("Payout addresses saved.");
     } catch {
-      setMsg("Could not save payout — is the app server up?");
+      setMsg("Could not save payout — check the server, or restart the app once to refresh the device secret.");
     }
   }
 

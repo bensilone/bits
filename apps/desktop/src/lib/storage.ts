@@ -39,6 +39,7 @@ export const defaultSettings: Settings = {
 
 const DEVICE_KEY = "sparks_device_id";
 const SETTINGS_KEY = "sparks_settings";
+const WORKER_SECRET_KEY = "sparks_worker_secret";
 
 export function getOrCreateDeviceId(): string {
   let id = localStorage.getItem(DEVICE_KEY);
@@ -88,4 +89,12 @@ export function loadSettings(): Settings {
 
 export function saveSettings(s: Settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+}
+
+export function getWorkerSecret(): string | null {
+  return localStorage.getItem(WORKER_SECRET_KEY);
+}
+
+export function saveWorkerSecret(secret: string) {
+  localStorage.setItem(WORKER_SECRET_KEY, secret);
 }

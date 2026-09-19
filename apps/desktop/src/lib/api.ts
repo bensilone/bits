@@ -26,15 +26,24 @@ export async function fetchSummary(apiBase: string, deviceId: string) {
   return res.json();
 }
 
-export async function savePayout(apiBase: string, deviceId: string, s: Settings) {
+export async function savePayout(
+  apiBase: string,
+  deviceId: string,
+  s: Settings,
+  workerSecret: string
+) {
   const res = await apiFetch(`${apiBase}/v1/devices/${deviceId}/payout`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-Sparks-Worker-Secret": workerSecret,
+    },
     body: JSON.stringify({
       usdt_address: s.usdtAddress || null,
       usdt_network: "TRC20",
       btc_address: s.btcAddress || null,
       preferred_asset: s.preferredAsset,
+      worker_secret: workerSecret,
     }),
   });
   if (!res.ok) throw new Error(`payout ${res.status}`);
