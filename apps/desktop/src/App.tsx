@@ -37,6 +37,40 @@ function formatWhen(iso: string | null): string {
   });
 }
 
+
+function EntryProgress(props: {
+  entries: number;
+  credits: number;
+  creditsPerEntry: number;
+  earning: boolean;
+}) {
+  const cpe = props.creditsPerEntry > 0 ? props.creditsPerEntry : 1000;
+  const toward = ((props.credits % cpe) + cpe) % cpe;
+  const pct = Math.min(100, Math.round((toward / cpe) * 100));
+  return (
+    <div className="entry-progress">
+      <div className="entry-progress-top">
+        <span className="muted">
+          {props.entries === 0
+            ? props.earning
+              ? "Working toward your first entry"
+              : "Progress to first entry"
+            : "Progress to next entry"}
+        </span>
+        <span className="muted">{pct}%</span>
+      </div>
+      <div className="entry-progress-track" aria-hidden>
+        <div className="entry-progress-fill" style={{ width: `${pct}%` }} />
+      </div>
+      <p className="hint" style={{ marginTop: 8 }}>
+        {props.earning
+          ? "Verified work counts as it comes in — usually a few minutes for the bar to move, then your first entry."
+          : "Press Start to begin earning. Entries are based only on verified work."}
+      </p>
+    </div>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState<Tab>("home");
   const [deviceId] = useState(() => getOrCreateDeviceId());
@@ -44,6 +78,8 @@ export default function App() {
   const [status, setStatus] = useState<WorkerStatus>("off");
   const [activity, setActivity] = useState<ActivityMode>("idle");
   const [entries, setEntries] = useState(0);
+  const [credits, setCredits] = useState(0);
+  const [creditsPerEntry, setCreditsPerEntry] = useState(1000);
   const [refCode, setRefCode] = useState<string>("");
   const [nextAward, setNextAward] = useState<NextAward | null>(null);
   const [msg, setMsg] = useState<string>("");
@@ -72,6 +108,8 @@ export default function App() {
       setRefCode(reg.ref_code);
       const sum = await fetchSummary(settings.apiBaseUrl, deviceId);
       setEntries(sum.entries ?? 0);
+      setCredits(Number(sum.credits ?? 0));
+      setCreditsPerEntry(Number(sum.credits_per_entry ?? 1000) || 1000);
       setNextAward(sum.next_award ?? null);
       setMsg("");
     } catch (e) {
@@ -84,9 +122,10 @@ export default function App() {
 
   useEffect(() => {
     refresh();
-    const t = setInterval(refresh, 30_000);
+    const earning = status === "earning" || status === "waiting_idle";
+    const t = setInterval(refresh, earning ? 15_000 : 30_000);
     return () => clearInterval(t);
-  }, [refresh]);
+  }, [refresh, status]);
 
   function update(partial: Partial<Settings>) {
     const next = { ...settings, ...partial };
@@ -320,6 +359,12 @@ export default function App() {
               <span className="muted">Your entries this race</span>
               <span className="entries-num">{entries.toLocaleString()}</span>
             </div>
+            <EntryProgress
+              entries={entries}
+              credits={credits}
+              creditsPerEntry={creditsPerEntry}
+              earning={status === "earning" || status === "waiting_idle"}
+            />
           </div>
 
           <div className="card invite-card">

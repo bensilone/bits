@@ -149,3 +149,17 @@ input, select {
   padding: 12px 14px; font-size: 0.85rem;
   box-shadow: 0 8px 24px rgba(15,23,42,0.2);
 }
+
+.entry-progress { margin-top: 14px; }
+.entry-progress-top {
+  display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+.entry-progress-track {
+  height: 10px; border-radius: 999px; background: #e2e8f0; overflow: hidden;
+}
+.entry-progress-fill {
+  height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #f59e0b, #ea580c);
+  transition: width 0.4s ease;
+}
