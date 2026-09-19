@@ -279,38 +279,48 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceId]);
 
-  function homeStatusLabel(): { title: string; sub: string; pill: string } {
+  function homeStatusLabel(): {
+    title: string;
+    detail: string | null;
+    detailKind: "inuse" | "idle" | null;
+    pill: string;
+  } {
     if (status === "earning") {
       if (activity === "active" && settings.cpuPercentInUse > 0) {
         return {
           title: "Earning entries…",
-          sub: `In use · ${settings.cpuPercentInUse}%`,
+          detail: `In use ${settings.cpuPercentInUse}%`,
+          detailKind: "inuse",
           pill: "earning",
         };
       }
       return {
         title: "Earning entries…",
-        sub: `Idle · ${settings.cpuPercentIdle}%`,
+        detail: `Idle ${settings.cpuPercentIdle}%`,
+        detailKind: "idle",
         pill: "earning",
       };
     }
     if (status === "waiting_idle") {
       return {
         title: "Waiting until idle",
-        sub: "Resumes when you step away",
+        detail: "Away soon",
+        detailKind: "idle",
         pill: "waiting",
       };
     }
     if (status === "paused") {
       return {
         title: "Paused",
-        sub: "Not earning right now",
+        detail: null,
+        detailKind: null,
         pill: "paused",
       };
     }
     return {
       title: "Off",
-      sub: "Press Start to earn while idle",
+      detail: null,
+      detailKind: null,
       pill: "off",
     };
   }
@@ -344,21 +354,25 @@ export default function App() {
 
       {tab === "home" && (
         <div className="stack">
-          <div className="card">
-            <div className={`status-pill ${home.pill}`}>
-              <span className="status-dot" aria-hidden />
-              {home.title}
+          <div className="card card-home-controls">
+            <div className="status-row">
+              <div className={`status-pill ${home.pill}`}>
+                <span className="status-dot" aria-hidden />
+                {home.title}
+              </div>
+              {home.detail && (
+                <div className={`status-pill detail ${home.detailKind ?? ""}`}>
+                  {home.detail}
+                </div>
+              )}
             </div>
-            <p className="muted" style={{ marginTop: 8 }}>
-              {home.sub}
-            </p>
             <button
-              className={`btn ${status === "earning" || status === "waiting_idle" ? "pause" : ""}`}
+              className={`btn btn-start ${status === "earning" || status === "waiting_idle" ? "pause" : ""}`}
               onClick={toggleEarn}
             >
               {status === "earning" || status === "waiting_idle" ? "Pause" : "Start"}
             </button>
-            <p className="hint" style={{ marginTop: 10, textAlign: "center" }}>
+            <p className="hint" style={{ marginTop: 8, textAlign: "center" }}>
               Start uses spare compute. Off on battery unless you allow it in Settings.
             </p>
           </div>
@@ -400,40 +414,78 @@ export default function App() {
                   <span className="muted tiny">Your invite code</span>
                   <code className="invite-code">{refCode}</code>
                 </div>
-                <div className="share-row">
+                <div className="share-icons" role="group" aria-label="Share invite">
                   <button
                     type="button"
-                    className="btn btn-secondary"
+                    className="share-icon"
+                    title={copied === "link" ? "Copied link" : "Copy link"}
+                    aria-label="Copy invite link"
                     onClick={() => copyText("link", shareUrl)}
                   >
-                    {copied === "link" ? "Copied link" : "Copy link"}
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden>
+                      <path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                    </svg>
+                    <span className="share-icon-label">{copied === "link" ? "Copied" : "Link"}</span>
                   </button>
                   <button
                     type="button"
-                    className="btn btn-secondary"
+                    className="share-icon"
+                    title={copied === "msg" ? "Copied" : "Copy message"}
+                    aria-label="Copy invite message"
                     onClick={() => copyText("msg", shareText)}
                   >
-                    {copied === "msg" ? "Copied" : "Copy message"}
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden>
+                      <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/>
+                    </svg>
+                    <span className="share-icon-label">{copied === "msg" ? "Copied" : "Msg"}</span>
                   </button>
-                </div>
-                <div className="share-row">
                   <a
-                    className="btn btn-ghost"
+                    className="share-icon"
                     href={xShare}
                     target="_blank"
                     rel="noreferrer"
+                    title="Share on X"
+                    aria-label="Share on X"
                   >
-                    Share on X
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
+                      <path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.727-8.924L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/>
+                    </svg>
+                    <span className="share-icon-label">X</span>
                   </a>
                   <a
-                    className="btn btn-ghost"
+                    className="share-icon"
                     href={fbShare}
                     target="_blank"
                     rel="noreferrer"
+                    title="Share on Facebook"
+                    aria-label="Share on Facebook"
                   >
-                    Share on Facebook
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden>
+                      <path fill="currentColor" d="M22 12.07C22 6.48 17.52 2 11.93 2S1.86 6.48 1.86 12.07c0 5.02 3.66 9.18 8.44 9.93v-7.02H7.9v-2.91h2.4V9.84c0-2.37 1.41-3.68 3.56-3.68 1.03 0 2.11.18 2.11.18v2.32h-1.19c-1.17 0-1.54.73-1.54 1.48v1.78h2.62l-.42 2.91h-2.2V22c4.78-.75 8.44-4.91 8.44-9.93z"/>
+                    </svg>
+                    <span className="share-icon-label">FB</span>
                   </a>
+                  <button
+                    type="button"
+                    className="share-icon"
+                    title={copied === "ig" ? "Copied — paste in Instagram" : "Copy for Instagram"}
+                    aria-label="Copy invite for Instagram"
+                    onClick={() => {
+                      void copyText("ig", shareText);
+                      window.open("https://www.instagram.com/", "_blank", "noopener,noreferrer");
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden>
+                      <path fill="currentColor" d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm11 1.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5zM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>
+                    </svg>
+                    <span className="share-icon-label">{copied === "ig" ? "Copied" : "IG"}</span>
+                  </button>
                 </div>
+                {copied === "ig" && (
+                  <p className="hint" style={{ marginTop: 8, textAlign: "center" }}>
+                    Message copied — paste it in Instagram.
+                  </p>
+                )}
               </>
             ) : (
               <p className="muted">Invite link appears once the app connects.</p>
