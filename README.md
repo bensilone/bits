@@ -4,20 +4,20 @@
 
 Idle CPU → verified compute → lottery entries → win **USDT (TRC20)** or **BTC**.
 
-This repository is the **Bits desktop app** (Tauri 2 for Mac and Windows). The backend is private; the app talks to the live Bits API by default. (GitHub repo slug may still be `sparks` until renamed.)
+This repository is the **Bits desktop app** (Tauri 2 for Mac and Windows). The backend is private; the app talks to the live Bits API by default.
 
 ## One-command install (Mac)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/bensilone/sparks/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/bensilone/bits/main/install.sh | bash
 ```
 
-That clones into `~/sparks` (or updates it), installs Node/Rust if needed, downloads the pinned XMRig worker, and launches the app.
+That clones into `~/bits` (or updates it), installs Node/Rust if needed, downloads the pinned XMRig worker, and launches the app.
 
 Already cloned?
 
 ```bash
-cd sparks
+cd bits
 ./install.sh
 ```
 
@@ -44,8 +44,8 @@ Or re-run `./install.sh` (it does a clean platform install).
 ## Manual commands
 
 ```bash
-git clone https://github.com/bensilone/sparks.git
-cd sparks
+git clone https://github.com/bensilone/bits.git
+cd bits
 npm install
 npm run fetch-worker   # pinned XMRig into apps/desktop/binaries/ (gitignored)
 npm run dev            # Tauri window

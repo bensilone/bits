@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Bits desktop — one-command setup (Mac primary).
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/bensilone/sparks/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/bensilone/bits/main/install.sh | bash
 # Or after clone:
 #   ./install.sh
 set -euo pipefail
 
-REPO_URL="${SPARKS_REPO_URL:-https://github.com/bensilone/sparks.git}"
-INSTALL_DIR="${SPARKS_DIR:-$HOME/sparks}"
+REPO_URL="${BITS_REPO_URL:-${SPARKS_REPO_URL:-https://github.com/bensilone/bits.git}}"
+INSTALL_DIR="${BITS_DIR:-${SPARKS_DIR:-$HOME/bits}}"
 PROD_API="https://sparks-api-x5tpjitcia-uc.a.run.app"
 
 say() { printf '\n==> %s\n' "$*"; }
