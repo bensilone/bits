@@ -28,10 +28,10 @@ export interface Settings {
 
 export const defaultSettings: Settings = {
   apiBaseUrl: "https://sparks-api-x5tpjitcia-uc.a.run.app",
-  cpuPercentInUse: 0,
-  cpuPercentIdle: 50,
+  cpuPercentInUse: 25,
+  cpuPercentIdle: 75,
   idleDelayMin: 5,
-  whenBack: "pause",
+  whenBack: "resume_idle",
   allowBattery: false,
   usdtNetwork: "TRC20",
   preferredAsset: "USDT",
