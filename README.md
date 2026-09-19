@@ -28,6 +28,19 @@ cd sparks
 - **macOS:** Xcode Command Line Tools
 - **Windows:** [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (WebView2, VS Build Tools), then `./install.sh` from Git Bash or run the npm steps manually
 
+## If `tauri dev` says “Cannot find native binding”
+
+The Tauri CLI needs a Mac-native binary. From the repo root:
+
+```bash
+rm -rf node_modules apps/desktop/node_modules package-lock.json
+npm install --include=optional
+npm run fetch-worker
+npm run dev
+```
+
+Or re-run `./install.sh` (it does a clean platform install).
+
 ## Manual commands
 
 ```bash

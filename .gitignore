@@ -20,3 +20,6 @@ packages/shared/dist/
 # XMRig fetched via npm run fetch-worker — do not commit binaries
 apps/desktop/binaries/xmrig/**
 !.gitkeep
+
+# Generate per-machine so Tauri optional native deps match OS/arch
+package-lock.json
