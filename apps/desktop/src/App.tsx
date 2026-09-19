@@ -11,7 +11,31 @@ import { startWorker, stopWorker, type WorkerStatus } from "./lib/worker";
 type Tab = "home" | "payout" | "settings";
 type ActivityMode = "idle" | "active";
 
+type NextAward = {
+  headline: string | null;
+  next_award_at: string | null;
+  prize_summary: string | null;
+  total_usd: number | null;
+};
+
 const IDLE_POLL_MS = 5_000;
+const SITE = "https://winbitcoin.app";
+
+function inviteUrl(code: string) {
+  return `${SITE}/r/${code}`;
+}
+
+function inviteBlurb(code: string) {
+  return `I'm earning prize entries with Sparks (winbitcoin.app). Join with my invite and we both benefit if you win: ${inviteUrl(code)}`;
+}
+
+function formatWhen(iso: string | null): string {
+  if (!iso) return "Not scheduled yet";
+  return new Date(iso).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("home");
@@ -21,10 +45,10 @@ export default function App() {
   const [activity, setActivity] = useState<ActivityMode>("idle");
   const [entries, setEntries] = useState(0);
   const [refCode, setRefCode] = useState<string>("");
-  const [nextAward, setNextAward] = useState<string | null>(null);
+  const [nextAward, setNextAward] = useState<NextAward | null>(null);
   const [msg, setMsg] = useState<string>("");
+  const [copied, setCopied] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const statusRef = useRef(status);
   const settingsRef = useRef(settings);
@@ -48,7 +72,7 @@ export default function App() {
       setRefCode(reg.ref_code);
       const sum = await fetchSummary(settings.apiBaseUrl, deviceId);
       setEntries(sum.entries ?? 0);
-      setNextAward(sum.next_award?.next_award_at ?? null);
+      setNextAward(sum.next_award ?? null);
       setMsg("");
     } catch (e) {
       const detail = e instanceof Error ? e.message : String(e);
@@ -111,7 +135,7 @@ export default function App() {
         ).getBattery?.();
         if (batt && !batt.charging) {
           setMsg(
-            "On battery — earning is off by default. Enable “Allow earning on battery” in Settings to override."
+            "On battery — earning is off by default. Turn on “Allow earning on battery” in Settings to override."
           );
           return;
         }
@@ -120,7 +144,6 @@ export default function App() {
       }
     }
 
-    // On Start: apply idle % (yield-the-machine default path).
     const ok = await applyCpuPercent(settings.cpuPercentIdle);
     if (ok) {
       setStatus("earning");
@@ -139,7 +162,16 @@ export default function App() {
     }
   }
 
-  // Best-effort activity heuristic (window input). OS idle APIs are next.
+  async function copyText(label: string, text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(label);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      setMsg("Could not copy — try selecting the link manually.");
+    }
+  }
+
   useEffect(() => {
     const bump = () => {
       lastInputRef.current = Date.now();
@@ -175,7 +207,6 @@ export default function App() {
           await applyCpuPercent(s.cpuPercentInUse);
         }
       } else {
-        // Idle again
         if (st === "waiting_idle" || st === "earning") {
           const ok = await applyCpuPercent(s.cpuPercentIdle);
           if (ok) setStatus("earning");
@@ -193,20 +224,20 @@ export default function App() {
       if (activity === "active" && settings.cpuPercentInUse > 0) {
         return {
           title: "Earning entries…",
-          sub: `Computer in use · ${settings.cpuPercentInUse}% CPU`,
+          sub: `In use · ${settings.cpuPercentInUse}%`,
           pill: "earning",
         };
       }
       return {
         title: "Earning entries…",
-        sub: `Idle · ${settings.cpuPercentIdle}% CPU`,
+        sub: `Idle · ${settings.cpuPercentIdle}%`,
         pill: "earning",
       };
     }
     if (status === "waiting_idle") {
       return {
         title: "Waiting until idle",
-        sub: "Will resume earning when you step away",
+        sub: "Resumes when you step away",
         pill: "waiting",
       };
     }
@@ -219,12 +250,20 @@ export default function App() {
     }
     return {
       title: "Off",
-      sub: "Press Start to earn entries while idle",
+      sub: "Press Start to earn while idle",
       pill: "off",
     };
   }
 
   const home = homeStatusLabel();
+  const shareUrl = refCode ? inviteUrl(refCode) : "";
+  const shareText = refCode ? inviteBlurb(refCode) : "";
+  const xShare = shareUrl
+    ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`
+    : "";
+  const fbShare = shareUrl
+    ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`
+    : "";
 
   return (
     <div className="app">
@@ -244,52 +283,94 @@ export default function App() {
       </div>
 
       {tab === "home" && (
-        <div className="card">
-          <div className={`status-pill ${home.pill}`}>
-            <span className="status-dot" aria-hidden />
-            {home.title}
+        <div className="stack">
+          <div className="card">
+            <div className={`status-pill ${home.pill}`}>
+              <span className="status-dot" aria-hidden />
+              {home.title}
+            </div>
+            <p className="muted" style={{ marginTop: 8 }}>
+              {home.sub}
+            </p>
+            <button
+              className={`btn ${status === "earning" || status === "waiting_idle" ? "pause" : ""}`}
+              onClick={toggleEarn}
+            >
+              {status === "earning" || status === "waiting_idle" ? "Pause" : "Start"}
+            </button>
+            <p className="hint" style={{ marginTop: 10, textAlign: "center" }}>
+              Start uses spare compute. Off on battery unless you allow it in Settings.
+            </p>
           </div>
-          <p className="muted" style={{ marginTop: 8 }}>
-            {home.sub}
-          </p>
-          <p className="muted" style={{ marginTop: 16 }}>
-            Your entries this race
-          </p>
-          <div className="big">{entries}</div>
-          <p className="muted">
-            Next award:{" "}
-            {nextAward ? new Date(nextAward).toLocaleString() : "not scheduled"}
-          </p>
-          <button
-            className={`btn ${status === "earning" || status === "waiting_idle" ? "pause" : ""}`}
-            onClick={toggleEarn}
-          >
-            {status === "earning" || status === "waiting_idle" ? "Pause" : "Start"}
-          </button>
-          <p className="muted" style={{ marginTop: 10 }}>
-            Start uses spare computer time to earn prize entries. Pause stops earning.
-            Earning stays off on battery unless enabled in Settings.
-          </p>
-          <div className="callout">
-            Entries reset after every award. Each event is a new race from zero.
+
+          <div className="card award-card">
+            <p className="eyebrow">Next award</p>
+            <h2 className="award-title">
+              {nextAward?.headline ?? "Coming soon"}
+            </h2>
+            {(nextAward?.total_usd != null || nextAward?.prize_summary) && (
+              <p className="award-amount">
+                {nextAward.total_usd != null
+                  ? `$${nextAward.total_usd.toLocaleString()}`
+                  : nextAward.prize_summary}
+              </p>
+            )}
+            <p className="award-when">{formatWhen(nextAward?.next_award_at ?? null)}</p>
+            <div className="entries-row">
+              <span className="muted">Your entries this race</span>
+              <span className="entries-num">{entries.toLocaleString()}</span>
+            </div>
           </div>
-          <div className="footer-links">
-            Your invite: <code>{refCode || "…"}</code>
-            {refCode && (
+
+          <div className="card invite-card">
+            <h2 className="section-h">Invite friends</h2>
+            <p className="muted" style={{ marginTop: 0 }}>
+              Share your link. If someone joins with it and wins, you get a{" "}
+              <strong>10% bonus</strong> on their prize.
+            </p>
+            {refCode ? (
               <>
-                {" "}
-                ·{" "}
-                <button
-                  className="linkish"
-                  onClick={() =>
-                    navigator.clipboard.writeText(
-                      `https://winbitcoin.app/r/${refCode}`
-                    )
-                  }
-                >
-                  Copy invite
-                </button>
+                <div className="invite-code-box">
+                  <span className="muted tiny">Your invite code</span>
+                  <code className="invite-code">{refCode}</code>
+                </div>
+                <div className="share-row">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => copyText("link", shareUrl)}
+                  >
+                    {copied === "link" ? "Copied link" : "Copy link"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => copyText("msg", shareText)}
+                  >
+                    {copied === "msg" ? "Copied" : "Copy message"}
+                  </button>
+                </div>
+                <div className="share-row">
+                  <a
+                    className="btn btn-ghost"
+                    href={xShare}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Share on X
+                  </a>
+                  <a
+                    className="btn btn-ghost"
+                    href={fbShare}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Share on Facebook
+                  </a>
+                </div>
               </>
+            ) : (
+              <p className="muted">Invite link appears once the app connects.</p>
             )}
           </div>
         </div>
@@ -316,19 +397,19 @@ export default function App() {
               <input
                 type="radio"
                 name="pref"
-                checked={settings.preferredAsset === "USDT"}
-                onChange={() => update({ preferredAsset: "USDT" })}
+                checked={settings.preferredAsset === "BTC"}
+                onChange={() => update({ preferredAsset: "BTC" })}
               />
-              USDT (TRC20) — recommended
+              BTC
             </label>
             <label className="radio">
               <input
                 type="radio"
                 name="pref"
-                checked={settings.preferredAsset === "BTC"}
-                onChange={() => update({ preferredAsset: "BTC" })}
+                checked={settings.preferredAsset === "USDT"}
+                onChange={() => update({ preferredAsset: "USDT" })}
               />
-              BTC
+              USDT (TRC20)
             </label>
           </fieldset>
           <button className="btn" onClick={syncPayout}>
@@ -341,128 +422,123 @@ export default function App() {
       )}
 
       {tab === "settings" && (
-        <div className="card">
-          <h2 style={{ marginTop: 0 }}>Settings</h2>
+        <div className="stack">
+          <div className="card">
+            <h2 className="section-h" style={{ marginTop: 0 }}>
+              Earning
+            </h2>
+            <p className="muted" style={{ marginTop: 0 }}>
+              How hard the app works when you’re away vs when you’re using the computer.
+            </p>
 
-          <label>While I’m using the computer</label>
-          <select
-            value={settings.cpuPercentInUse}
-            onChange={(e) =>
-              update({
-                cpuPercentInUse: Number(e.target.value) as Settings["cpuPercentInUse"],
-              })
-            }
-          >
-            <option value={0}>0% — don’t earn while in use</option>
-            <option value={25}>25%</option>
-            <option value={50}>50%</option>
-            <option value={75}>75%</option>
-            <option value={100}>100%</option>
-          </select>
-          <p className="hint">
-            When activity is detected, switch to this level. 0% pauses the worker.
-          </p>
+            <label>When idle</label>
+            <select
+              value={settings.cpuPercentIdle}
+              onChange={(e) =>
+                update({
+                  cpuPercentIdle: Number(e.target.value) as Settings["cpuPercentIdle"],
+                })
+              }
+            >
+              <option value={25}>Light (25%)</option>
+              <option value={50}>Medium (50%)</option>
+              <option value={75}>High (75%)</option>
+              <option value={100}>Max (100%)</option>
+            </select>
 
-          <label>When idle</label>
-          <select
-            value={settings.cpuPercentIdle}
-            onChange={(e) =>
-              update({
-                cpuPercentIdle: Number(e.target.value) as Settings["cpuPercentIdle"],
-              })
-            }
-          >
-            <option value={25}>25%</option>
-            <option value={50}>50%</option>
-            <option value={75}>75%</option>
-            <option value={100}>100%</option>
-          </select>
-          <p className="hint">Used when you press Start, and again once the computer is idle.</p>
+            <label>While using the computer</label>
+            <select
+              value={settings.cpuPercentInUse}
+              onChange={(e) =>
+                update({
+                  cpuPercentInUse: Number(e.target.value) as Settings["cpuPercentInUse"],
+                })
+              }
+            >
+              <option value={0}>Pause earning</option>
+              <option value={25}>Light (25%)</option>
+              <option value={50}>Medium (50%)</option>
+              <option value={75}>High (75%)</option>
+              <option value={100}>Max (100%)</option>
+            </select>
 
-          <label>Consider idle after</label>
-          <select
-            value={settings.idleDelayMin}
-            onChange={(e) =>
-              update({
-                idleDelayMin: Number(e.target.value) as Settings["idleDelayMin"],
-              })
-            }
-          >
-            <option value={1}>1 min</option>
-            <option value={5}>5 min</option>
-            <option value={10}>10 min</option>
-            <option value={30}>30 min</option>
-          </select>
+            <label>Treat as idle after</label>
+            <select
+              value={settings.idleDelayMin}
+              onChange={(e) =>
+                update({
+                  idleDelayMin: Number(e.target.value) as Settings["idleDelayMin"],
+                })
+              }
+            >
+              <option value={1}>1 minute</option>
+              <option value={5}>5 minutes</option>
+              <option value={10}>10 minutes</option>
+              <option value={30}>30 minutes</option>
+            </select>
 
-          <label>If earning pauses while I’m using the computer</label>
-          <select
-            value={settings.whenBack}
-            onChange={(e) =>
-              update({ whenBack: e.target.value as Settings["whenBack"] })
-            }
-          >
-            <option value="pause">Stay paused until I press Start</option>
-            <option value="resume_idle">Automatically resume idle earning</option>
-          </select>
+            <label>If earning stops while you’re busy</label>
+            <select
+              value={settings.whenBack}
+              onChange={(e) =>
+                update({ whenBack: e.target.value as Settings["whenBack"] })
+              }
+            >
+              <option value="pause">Stay paused until I press Start</option>
+              <option value="resume_idle">Resume automatically when idle again</option>
+            </select>
 
-          <div className="row">
-            <input
-              id="batt"
-              type="checkbox"
-              checked={settings.allowBattery}
-              onChange={(e) => update({ allowBattery: e.target.checked })}
-            />
-            <label htmlFor="batt" style={{ margin: 0 }}>
-              Allow earning on battery (off by default)
-            </label>
+            <div className="row">
+              <input
+                id="batt"
+                type="checkbox"
+                checked={settings.allowBattery}
+                onChange={(e) => update({ allowBattery: e.target.checked })}
+              />
+              <label htmlFor="batt" style={{ margin: 0 }}>
+                Allow earning on battery
+              </label>
+            </div>
           </div>
 
-          <label>Bonus goes to (referral code)</label>
-          <input
-            value={settings.referralCode ?? ""}
-            onChange={(e) => update({ referralCode: e.target.value.trim() })}
-            placeholder="Friend’s code"
-          />
-          <p className="hint">
-            If you win, that person gets a 10% bonus. You can change this anytime before a
-            win is locked.
-          </p>
-
-          <details
-            className="disclosure"
-            open={advancedOpen}
-            onToggle={(e) => setAdvancedOpen((e.target as HTMLDetailsElement).open)}
-          >
-            <summary>Advanced / Developer</summary>
-            <label>API base URL</label>
+          <div className="card">
+            <h2 className="section-h" style={{ marginTop: 0 }}>
+              Someone invited you?
+            </h2>
+            <p className="muted" style={{ marginTop: 0 }}>
+              Enter their code so they get the 10% bonus if you win. Separate from{" "}
+              <em>your</em> invite on Home, which you share with friends.
+            </p>
+            <label>Their invite code</label>
             <input
-              value={settings.apiBaseUrl}
-              onChange={(e) => update({ apiBaseUrl: e.target.value })}
+              value={settings.referralCode ?? ""}
+              onChange={(e) => update({ referralCode: e.target.value.trim() })}
+              placeholder="Paste a friend’s code"
             />
-            <p className="hint">Testing/dev only. Default is fine for normal use.</p>
-          </details>
+          </div>
 
-          <details
-            className="disclosure"
-            open={detailsOpen}
-            onToggle={(e) => setDetailsOpen((e.target as HTMLDetailsElement).open)}
-          >
-            <summary>Details / log</summary>
-            <p className="muted" style={{ marginTop: 8 }}>
-              Device id: <code style={{ fontSize: "0.75rem" }}>{deviceId}</code>
-            </p>
-            <p className="muted">
-              Your invite code: <code>{refCode || "…"}</code>
-            </p>
-            <p className="muted">
-              Activity switching is best-effort (keyboard/mouse in this window). Full OS
-              idle detection is next. Worker still uses signed work-config under the hood.
-            </p>
-          </details>
+          <div className="card">
+            <details
+              className="disclosure flat"
+              open={advancedOpen}
+              onToggle={(e) => setAdvancedOpen((e.target as HTMLDetailsElement).open)}
+            >
+              <summary>Advanced</summary>
+              <label>Server URL</label>
+              <input
+                value={settings.apiBaseUrl}
+                onChange={(e) => update({ apiBaseUrl: e.target.value })}
+              />
+              <p className="hint">Leave the default unless you’re testing.</p>
+              <p className="muted" style={{ marginTop: 12 }}>
+                Device id: <code className="tiny-code">{deviceId}</code>
+              </p>
+            </details>
+          </div>
         </div>
       )}
 
-      {msg && <div className="callout">{msg}</div>}
+      {msg && <div className="toast">{msg}</div>}
     </div>
   );
 }

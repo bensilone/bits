@@ -89,3 +89,63 @@ input, select {
   border: none; background: none; color: #0284c7; cursor: pointer; padding: 0;
   font: inherit;
 }
+
+.stack { display: flex; flex-direction: column; gap: 14px; }
+.section-h {
+  font-size: 1.05rem; font-weight: 700; margin: 0 0 6px;
+}
+.eyebrow {
+  margin: 0; font-size: 0.72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em; color: #b45309;
+}
+.award-card {
+  background: linear-gradient(165deg, #fff7ed 0%, #ffffff 55%);
+  border-color: #fed7aa;
+}
+.award-title {
+  margin: 6px 0 0; font-size: 1.45rem; font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.award-amount {
+  margin: 6px 0 0; font-size: 1.85rem; font-weight: 800;
+  letter-spacing: -0.03em; color: #9a3412;
+}
+.award-when {
+  margin: 4px 0 0; color: #64748b; font-size: 0.95rem; font-weight: 600;
+}
+.entries-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 12px; margin-top: 16px; padding-top: 14px;
+  border-top: 1px solid #fed7aa;
+}
+.entries-num { font-size: 1.5rem; font-weight: 800; }
+.invite-card .muted { margin-bottom: 12px; }
+.invite-code-box {
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
+  padding: 10px 12px; margin-bottom: 12px;
+}
+.invite-code-box .tiny { display: block; font-size: 0.75rem; margin-bottom: 2px; }
+.invite-code { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.02em; }
+.share-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;
+}
+.btn-secondary {
+  background: #0f172a; margin-top: 0; padding: 11px; font-size: 0.9rem;
+}
+.btn-ghost {
+  display: inline-flex; align-items: center; justify-content: center;
+  text-decoration: none; margin-top: 0; padding: 11px; font-size: 0.9rem;
+  background: #fff; color: #0f172a; border: 1px solid #e2e8f0;
+  border-radius: 999px; font-weight: 700;
+}
+.btn-ghost:hover { background: #f8fafc; }
+.disclosure.flat {
+  margin-top: 0; border-top: none; padding-top: 0;
+}
+.tiny-code { font-size: 0.72rem; word-break: break-all; }
+.toast {
+  position: sticky; bottom: 12px; margin-top: 14px;
+  background: #0f172a; color: #fff; border-radius: 12px;
+  padding: 12px 14px; font-size: 0.85rem;
+  box-shadow: 0 8px 24px rgba(15,23,42,0.2);
+}
