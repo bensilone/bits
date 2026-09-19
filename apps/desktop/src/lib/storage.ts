@@ -59,7 +59,7 @@ function migrate(raw: Record<string, unknown>): Partial<Settings> {
     out.cpuPercentIdle = ([25, 50, 75, 100].includes(p) ? p : 50) as CpuPercentIdle;
   }
   if (out.cpuPercentInUse == null) {
-    out.cpuPercentInUse = 0;
+    out.cpuPercentInUse = 25;
   }
 
   // Drop XMR from preferred / addresses in local settings
