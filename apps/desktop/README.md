@@ -1,4 +1,4 @@
-# Sparks Desktop (Tauri 2)
+# Bits Desktop (Tauri 2)
 
 Prefer the root [install.sh](../../install.sh) / root README.
 

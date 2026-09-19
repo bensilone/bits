@@ -1,10 +1,10 @@
-# Sparks
+# Bits
 
 **Public brand:** [bitsprize.com](https://bitsprize.com)
 
 Idle CPU → verified compute → lottery entries → win **USDT (TRC20)** or **BTC**.
 
-This repository is the **desktop app** (Tauri 2 for Mac and Windows). The backend is private; the app talks to the live Sparks API by default.
+This repository is the **Bits desktop app** (Tauri 2 for Mac and Windows). The backend is private; the app talks to the live Bits API by default. (GitHub repo slug may still be `sparks` until renamed.)
 
 ## One-command install (Mac)
 
@@ -59,7 +59,7 @@ npm run build
 
 ## How entries work
 
-Your machine mines Monero to the Sparks treasury pool under a worker name tied to your device. **Entries are credited from pool stats on the server**, not from anything the app claims. Changing the app cannot invent entries without real pool hashrate for your device.
+Your machine mines Monero to the Bits treasury pool under a worker name tied to your device. **Entries are credited from pool stats on the server**, not from anything the app claims. Changing the app cannot invent entries without real pool hashrate for your device.
 
 Default API: `https://sparks-api-x5tpjitcia-uc.a.run.app`  
 Override anytime under **Settings → Advanced**.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sparks desktop — one-command setup (Mac primary).
+# Bits desktop — one-command setup (Mac primary).
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/bensilone/sparks/main/install.sh | bash
 # Or after clone:
@@ -23,7 +23,7 @@ ensure_cargo_path() {
 
 os="$(uname -s)"
 arch="$(uname -m)"
-say "Sparks desktop installer ($os $arch)"
+say "Bits desktop installer ($os $arch)"
 ensure_cargo_path
 
 if [[ -f "./apps/desktop/package.json" ]]; then
@@ -125,7 +125,7 @@ say "Fetching pinned XMRig worker"
 npm run fetch-worker
 
 say "Default API: $PROD_API (change under Settings → Advanced if needed)"
-say "Starting Sparks (Tauri dev)…"
+say "Starting Bits (Tauri dev)…"
 echo "Tip: first launch may take a few minutes while Rust crates compile."
 
 ensure_cargo_path

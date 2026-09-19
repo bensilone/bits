@@ -28,7 +28,7 @@ function inviteUrl(code: string) {
 }
 
 function inviteBlurb(code: string) {
-  return `I'm earning prize entries with Sparks (bitsprize.com). Join with my invite and we both benefit if you win: ${inviteUrl(code)}`;
+  return `I'm earning prize entries with Bits (bitsprize.com). Join with my invite and we both benefit if you win: ${inviteUrl(code)}`;
 }
 
 function formatWhen(iso: string | null): string {

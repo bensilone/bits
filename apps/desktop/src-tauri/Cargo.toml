@@ -1,7 +1,7 @@
 [package]
 name = "sparks"
 version = "0.1.0"
-description = "Sparks desktop — idle compute → lottery entries"
+description = "Bits desktop — spare compute → prize entries"
 authors = ["bensilone"]
 edition = "2021"
 

@@ -2,7 +2,7 @@
   "name": "sparks",
   "version": "0.1.0",
   "private": true,
-  "description": "Sparks desktop — idle compute earns lottery entries for USDT/BTC (winbitcoin.app)",
+  "description": "Bits desktop — spare compute earns prize entries for BTC/USDT (bitsprize.com)",
   "workspaces": [
     "apps/desktop"
   ],

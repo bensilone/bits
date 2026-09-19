@@ -10,7 +10,7 @@
 		<true/>
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Sparks connects to the local Sparks API on your Mac (typically http://127.0.0.1:8787).</string>
+	<string>Bits connects to the Bits API (production by default; local typically http://127.0.0.1:8787).</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_http._tcp</string>

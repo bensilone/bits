@@ -202,5 +202,5 @@ pub fn run() {
             write_xmrig_config
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Sparks");
+        .expect("error while running Bits");
 }

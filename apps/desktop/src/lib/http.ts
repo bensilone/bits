@@ -1,5 +1,5 @@
 /**
- * HTTP helper for Sparks desktop.
+ * HTTP helper for Bits desktop.
  *
  * Tauri 2 WKWebView blocks browser fetch() to localhost (tauri:// origin,
  * CORS, private-network). Prefer the Tauri HTTP plugin (Rust) when available,
