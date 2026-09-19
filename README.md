@@ -1,6 +1,6 @@
 # Sparks
 
-**Public brand:** [winbitcoin.app](https://winbitcoin.app)
+**Public brand:** [bitsprize.com](https://bitsprize.com)
 
 Idle CPU → verified compute → lottery entries → win **USDT (TRC20)** or **BTC**.
 

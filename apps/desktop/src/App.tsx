@@ -19,14 +19,14 @@ type NextAward = {
 };
 
 const IDLE_POLL_MS = 5_000;
-const SITE = "https://winbitcoin.app";
+const SITE = "https://bitsprize.com";
 
 function inviteUrl(code: string) {
   return `${SITE}/r/${code}`;
 }
 
 function inviteBlurb(code: string) {
-  return `I'm earning prize entries with Sparks (winbitcoin.app). Join with my invite and we both benefit if you win: ${inviteUrl(code)}`;
+  return `I'm earning prize entries with Sparks (bitsprize.com). Join with my invite and we both benefit if you win: ${inviteUrl(code)}`;
 }
 
 function formatWhen(iso: string | null): string {
