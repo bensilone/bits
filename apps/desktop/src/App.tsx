@@ -100,34 +100,6 @@ export default function App() {
     settingsRef.current = settings;
   }, [settings]);
 
-  // Belt-and-suspenders: stop worker if the window/webview is torn down
-  useEffect(() => {
-    const halt = () => {
-      void stopWorker();
-    };
-    window.addEventListener("beforeunload", halt);
-    window.addEventListener("pagehide", halt);
-    let unlisten: (() => void) | undefined;
-    (async () => {
-      try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        unlisten = await getCurrentWindow().onCloseRequested(async (event) => {
-          await stopWorker();
-          // allow close to proceed
-          void event;
-        });
-      } catch {
-        /* browser / non-tauri */
-      }
-    })();
-    return () => {
-      window.removeEventListener("beforeunload", halt);
-      window.removeEventListener("pagehide", halt);
-      unlisten?.();
-      void stopWorker();
-    };
-  }, []);
-
   const refresh = useCallback(async () => {
     try {
       const reg = await registerDevice(

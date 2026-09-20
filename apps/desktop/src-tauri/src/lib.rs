@@ -2,8 +2,8 @@ use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-use std::time::Duration;
 
 use tauri::Manager;
 
@@ -16,6 +16,9 @@ static WORKER: Mutex<WorkerState> = Mutex::new(WorkerState {
     child: None,
     binary_path: None,
 });
+
+/// Ensures CloseRequested → exit only runs cleanup + quit once.
+static EXITING: AtomicBool = AtomicBool::new(false);
 
 fn worker_pid_path(app: &tauri::AppHandle) -> Option<PathBuf> {
     app.path().app_data_dir().ok().map(|d| d.join("worker.pid"))
@@ -30,6 +33,7 @@ fn write_worker_pid(app: &tauri::AppHandle, pid: u32) {
     }
 }
 
+/// Fast kill — no sleeps (must be safe on the UI thread during close).
 fn kill_pid(pid: u32) {
     if pid == 0 {
         return;
@@ -44,27 +48,11 @@ fn kill_pid(pid: u32) {
     }
     #[cfg(not(target_os = "windows"))]
     {
-        // TERM then KILL if still alive
         let _ = Command::new("kill")
-            .args(["-TERM", &pid.to_string()])
+            .args(["-KILL", &pid.to_string()])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .status();
-        std::thread::sleep(Duration::from_millis(200));
-        let still = Command::new("kill")
-            .args(["-0", &pid.to_string()])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false);
-        if still {
-            let _ = Command::new("kill")
-                .args(["-KILL", &pid.to_string()])
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status();
-        }
     }
 }
 
@@ -80,19 +68,7 @@ fn kill_process_tree(child: &mut Child) {
     }
     #[cfg(not(target_os = "windows"))]
     {
-        // Prefer process-group kill when we spawned with setsid
-        let _ = Command::new("kill")
-            .args(["-TERM", &format!("-{}", pid)])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status();
         let _ = child.kill();
-        std::thread::sleep(Duration::from_millis(150));
-        let _ = Command::new("kill")
-            .args(["-KILL", &format!("-{}", pid)])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status();
         let _ = Command::new("kill")
             .args(["-KILL", &pid.to_string()])
             .stdout(Stdio::null())
@@ -102,14 +78,12 @@ fn kill_process_tree(child: &mut Child) {
     let _ = child.wait();
 }
 
-/// Kill leftover worker processes that match our binary path (orphans after crash/quit).
 fn kill_orphans_matching_binary(binary: &Path) {
     let Some(bin_str) = binary.to_str() else {
         return;
     };
     #[cfg(target_os = "windows")]
     {
-        // Match command line containing our binary path
         let _ = Command::new("wmic")
             .args([
                 "process",
@@ -124,13 +98,12 @@ fn kill_orphans_matching_binary(binary: &Path) {
     }
     #[cfg(not(target_os = "windows"))]
     {
-        // pgrep -f with full path; only kill PIDs whose args contain that path
         if let Ok(out) = Command::new("pgrep").args(["-f", bin_str]).output() {
             if out.status.success() {
+                let self_pid = std::process::id();
                 for line in String::from_utf8_lossy(&out.stdout).lines() {
                     if let Ok(pid) = line.trim().parse::<u32>() {
-                        // Don't kill ourselves
-                        if pid != std::process::id() {
+                        if pid != self_pid {
                             kill_pid(pid);
                         }
                     }
@@ -140,21 +113,18 @@ fn kill_orphans_matching_binary(binary: &Path) {
     }
 }
 
-fn stop_worker_inner(app: Option<&tauri::AppHandle>) {
-    // 1) Tracked child
-    if let Ok(mut state) = WORKER.lock() {
-        let bin = state.binary_path.clone();
+fn stop_worker_inner(app: Option<&tauri::AppHandle>, reap_orphans: bool) {
+    let bin = {
+        let Ok(mut state) = WORKER.lock() else {
+            return;
+        };
+        let bin = state.binary_path.take();
         if let Some(mut child) = state.child.take() {
             kill_process_tree(&mut child);
         }
-        state.binary_path = None;
-        // 2) Orphans for that binary
-        if let Some(ref b) = bin {
-            kill_orphans_matching_binary(b);
-        }
-    }
+        bin
+    };
 
-    // 3) PID file from a previous run
     if let Some(app) = app {
         if let Some(path) = worker_pid_path(app) {
             if let Ok(s) = std::fs::read_to_string(&path) {
@@ -164,9 +134,16 @@ fn stop_worker_inner(app: Option<&tauri::AppHandle>) {
             }
             let _ = std::fs::remove_file(&path);
         }
-        // Also try default binary location orphans if we know it
-        if let Ok(bin) = resolve_xmrig_binary() {
-            kill_orphans_matching_binary(Path::new(&bin));
+    }
+
+    if reap_orphans {
+        if let Some(ref b) = bin {
+            kill_orphans_matching_binary(b);
+        } else if let Some(app) = app {
+            if let Ok(path) = resolve_xmrig_binary() {
+                let _ = app;
+                kill_orphans_matching_binary(Path::new(&path));
+            }
         }
     }
 }
@@ -250,7 +227,8 @@ fn write_xmrig_config(app: tauri::AppHandle, contents: String) -> Result<String,
 
 #[tauri::command]
 fn stop_worker(app: tauri::AppHandle) -> Result<(), String> {
-    stop_worker_inner(Some(&app));
+    // Pause path: kill tracked child + pid file; also reap orphans so Pause is reliable
+    stop_worker_inner(Some(&app), true);
     Ok(())
 }
 
@@ -261,8 +239,7 @@ fn start_xmrig(
     binary_path: String,
     threads: Option<u32>,
 ) -> Result<(), String> {
-    // Always clear any previous / orphaned worker first
-    stop_worker_inner(Some(&app));
+    stop_worker_inner(Some(&app), true);
 
     let bin = PathBuf::from(&binary_path);
     if !bin.is_file() {
@@ -336,19 +313,24 @@ pub fn run() {
             write_xmrig_config
         ])
         .setup(|app| {
-            // Clear orphans from a previous unclean quit
-            stop_worker_inner(Some(app.handle()));
+            // Reap orphans from a previous unclean quit (ok to be a bit slower here)
+            stop_worker_inner(Some(app.handle()), true);
             Ok(())
         })
         .build(tauri::generate_context!())
         .expect("error while running Bits")
         .run(|app_handle, event| match event {
             tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit => {
-                stop_worker_inner(Some(app_handle));
+                // Fast path only — no orphan scan (already killed on close / pause)
+                stop_worker_inner(Some(app_handle), false);
             }
             tauri::RunEvent::WindowEvent { event, .. } => {
                 if let tauri::WindowEvent::CloseRequested { .. } = event {
-                    stop_worker_inner(Some(app_handle));
+                    // Mac red-X normally hides; we quit the whole app after stopping the worker.
+                    if !EXITING.swap(true, Ordering::SeqCst) {
+                        stop_worker_inner(Some(app_handle), false);
+                        app_handle.exit(0);
+                    }
                 }
             }
             _ => {}
