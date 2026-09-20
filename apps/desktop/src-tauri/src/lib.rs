@@ -1,16 +1,72 @@
 use std::fs::{File, OpenOptions};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
+use std::time::Duration;
 
 use tauri::Manager;
 
 struct WorkerState {
     child: Option<Child>,
+    binary_path: Option<PathBuf>,
 }
 
-static WORKER: Mutex<WorkerState> = Mutex::new(WorkerState { child: None });
+static WORKER: Mutex<WorkerState> = Mutex::new(WorkerState {
+    child: None,
+    binary_path: None,
+});
+
+fn worker_pid_path(app: &tauri::AppHandle) -> Option<PathBuf> {
+    app.path().app_data_dir().ok().map(|d| d.join("worker.pid"))
+}
+
+fn write_worker_pid(app: &tauri::AppHandle, pid: u32) {
+    if let Some(path) = worker_pid_path(app) {
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let _ = std::fs::write(&path, pid.to_string());
+    }
+}
+
+fn kill_pid(pid: u32) {
+    if pid == 0 {
+        return;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let _ = Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/T", "/F"])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        // TERM then KILL if still alive
+        let _ = Command::new("kill")
+            .args(["-TERM", &pid.to_string()])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+        std::thread::sleep(Duration::from_millis(200));
+        let still = Command::new("kill")
+            .args(["-0", &pid.to_string()])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        if still {
+            let _ = Command::new("kill")
+                .args(["-KILL", &pid.to_string()])
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status();
+        }
+    }
+}
 
 fn kill_process_tree(child: &mut Child) {
     let pid = child.id();
@@ -24,19 +80,98 @@ fn kill_process_tree(child: &mut Child) {
     }
     #[cfg(not(target_os = "windows"))]
     {
-        // Best-effort: signal process group, then the child itself
+        // Prefer process-group kill when we spawned with setsid
         let _ = Command::new("kill")
             .args(["-TERM", &format!("-{}", pid)])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .status();
         let _ = child.kill();
+        std::thread::sleep(Duration::from_millis(150));
+        let _ = Command::new("kill")
+            .args(["-KILL", &format!("-{}", pid)])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+        let _ = Command::new("kill")
+            .args(["-KILL", &pid.to_string()])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
     }
     let _ = child.wait();
 }
 
+/// Kill leftover worker processes that match our binary path (orphans after crash/quit).
+fn kill_orphans_matching_binary(binary: &Path) {
+    let Some(bin_str) = binary.to_str() else {
+        return;
+    };
+    #[cfg(target_os = "windows")]
+    {
+        // Match command line containing our binary path
+        let _ = Command::new("wmic")
+            .args([
+                "process",
+                "where",
+                &format!("ExecutablePath='{}'", bin_str.replace('\'', "")),
+                "call",
+                "terminate",
+            ])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        // pgrep -f with full path; only kill PIDs whose args contain that path
+        if let Ok(out) = Command::new("pgrep").args(["-f", bin_str]).output() {
+            if out.status.success() {
+                for line in String::from_utf8_lossy(&out.stdout).lines() {
+                    if let Ok(pid) = line.trim().parse::<u32>() {
+                        // Don't kill ourselves
+                        if pid != std::process::id() {
+                            kill_pid(pid);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn stop_worker_inner(app: Option<&tauri::AppHandle>) {
+    // 1) Tracked child
+    if let Ok(mut state) = WORKER.lock() {
+        let bin = state.binary_path.clone();
+        if let Some(mut child) = state.child.take() {
+            kill_process_tree(&mut child);
+        }
+        state.binary_path = None;
+        // 2) Orphans for that binary
+        if let Some(ref b) = bin {
+            kill_orphans_matching_binary(b);
+        }
+    }
+
+    // 3) PID file from a previous run
+    if let Some(app) = app {
+        if let Some(path) = worker_pid_path(app) {
+            if let Ok(s) = std::fs::read_to_string(&path) {
+                if let Ok(pid) = s.trim().parse::<u32>() {
+                    kill_pid(pid);
+                }
+            }
+            let _ = std::fs::remove_file(&path);
+        }
+        // Also try default binary location orphans if we know it
+        if let Ok(bin) = resolve_xmrig_binary() {
+            kill_orphans_matching_binary(Path::new(&bin));
+        }
+    }
+}
+
 fn binaries_xmrig_dir() -> PathBuf {
-    // Dev: cwd is often apps/desktop/src-tauri → ../binaries/xmrig
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Ok(cwd) = std::env::current_dir() {
         candidates.push(cwd.join("binaries/xmrig"));
@@ -114,11 +249,8 @@ fn write_xmrig_config(app: tauri::AppHandle, contents: String) -> Result<String,
 }
 
 #[tauri::command]
-fn stop_worker() -> Result<(), String> {
-    let mut state = WORKER.lock().map_err(|e| e.to_string())?;
-    if let Some(mut child) = state.child.take() {
-        kill_process_tree(&mut child);
-    }
+fn stop_worker(app: tauri::AppHandle) -> Result<(), String> {
+    stop_worker_inner(Some(&app));
     Ok(())
 }
 
@@ -129,10 +261,8 @@ fn start_xmrig(
     binary_path: String,
     threads: Option<u32>,
 ) -> Result<(), String> {
-    let mut state = WORKER.lock().map_err(|e| e.to_string())?;
-    if let Some(mut child) = state.child.take() {
-        kill_process_tree(&mut child);
-    }
+    // Always clear any previous / orphaned worker first
+    stop_worker_inner(Some(&app));
 
     let bin = PathBuf::from(&binary_path);
     if !bin.is_file() {
@@ -186,6 +316,10 @@ fn start_xmrig(
             e
         )
     })?;
+    write_worker_pid(&app, child.id());
+
+    let mut state = WORKER.lock().map_err(|e| e.to_string())?;
+    state.binary_path = Some(bin);
     state.child = Some(child);
     Ok(())
 }
@@ -201,6 +335,22 @@ pub fn run() {
             resolve_xmrig_binary,
             write_xmrig_config
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Bits");
+        .setup(|app| {
+            // Clear orphans from a previous unclean quit
+            stop_worker_inner(Some(app.handle()));
+            Ok(())
+        })
+        .build(tauri::generate_context!())
+        .expect("error while running Bits")
+        .run(|app_handle, event| match event {
+            tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit => {
+                stop_worker_inner(Some(app_handle));
+            }
+            tauri::RunEvent::WindowEvent { event, .. } => {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    stop_worker_inner(Some(app_handle));
+                }
+            }
+            _ => {}
+        });
 }
